@@ -19,9 +19,9 @@ namespace StockKLineTrainer
     {
         private readonly DatabaseService _dbService;
         private List<StockData> _currentDataList = new();
-        private int _totalBars = 120;
-        private int _trainingBars = 80;
-        private int _currentVisibleBars = 80;
+        private int _totalBars = 270;
+        private int _trainingBars = 120;
+        private int _currentVisibleBars = 120;
         private bool _isTrainingMode = false;
         private bool _isAnswerRevealed = false;
         private bool _isInitializing = true;
@@ -89,7 +89,7 @@ namespace StockKLineTrainer
             ToggleTrainingCommand = new RelayCommand(_ => ToggleTrainingMode());
             RevealAnswerCommand = new RelayCommand(_ => RevealAnswer(), _ => _isTrainingMode && !_isAnswerRevealed);
             NextTrainingCommand = new RelayCommand(_ => LoadRandomStock(), _ => _isTrainingMode);
-            HoldOrWatchCommand = new RelayCommand(_ => OnHoldOrWatch(), _ => _isTrainingMode && !_isAnswerRevealed && _currentVisibleBars < _totalBars);
+            HoldOrWatchCommand = new RelayCommand(_ => OnHoldOrWatch(), _ => !_isAnswerRevealed && _currentVisibleBars < _totalBars);
 
             LoadStockList();
             _currentVisibleBars = _trainingBars;
@@ -120,28 +120,34 @@ namespace StockKLineTrainer
                 return;
             }
 
-            string newStock;
-            do
+            // 最多尝试 10 次，确保选到 2026 年之前有足够数据的股票
+            for (int attempt = 0; attempt < 10; attempt++)
             {
-                newStock = StockList[_random.Next(StockList.Count)];
-            } while (newStock == _selectedStock);
+                string newStock = StockList[_random.Next(StockList.Count)];
+                if (newStock == _selectedStock && StockList.Count > 1) continue;
 
-            var allData = _dbService.GetStockData(newStock, startDate: "19900101", limit: 10000);
-            if (allData.Count == 0) return;
+                // 改：加上 endDate 限制
+                var allData = _dbService.GetStockData(newStock, startDate: "19900101", endDate: "20251231", limit: 10000);
+                if (allData.Count == 0) continue;
 
-            if (allData.Count > _totalBars)
-            {
-                int maxStart = allData.Count - _totalBars;
-                int startIndex = _random.Next(maxStart);
-                _startDate = allData[startIndex].Date;
+                if (allData.Count >= _totalBars)
+                {
+                    int maxStart = allData.Count - _totalBars;
+                    int startIndex = _random.Next(maxStart);
+                    _startDate = allData[startIndex].Date;
+                    _currentDataList = allData.Skip(startIndex).Take(_totalBars).ToList();
+
+                    OnPropertyChanged(nameof(StartDate));
+                    SelectedStock = newStock;
+                    UpdatePriceChart();
+                    UpdateVolChart();
+                    UpdateMacdChart();
+                    UpdateInfoBar();
+                    return;
+                }
             }
-            else
-            {
-                _startDate = allData[0].Date;
-            }
 
-            OnPropertyChanged(nameof(StartDate));
-            SelectedStock = newStock;
+            MessageBox.Show($"无法找到 2026 年之前有足够历史数据（{_totalBars}根）的股票");
         }
 
         public void LoadData()
@@ -151,12 +157,41 @@ namespace StockKLineTrainer
 
             string startDateStr = _startDate.ToString("yyyyMMdd");
             Debug.WriteLine($"[DIAG] Query startDate={startDateStr}");
-            _currentDataList = _dbService.GetStockData(SelectedStock, startDate: startDateStr, limit: _totalBars);
+
+            // 改：加上 endDate 限制，只取 2026 年之前的数据
+            _currentDataList = _dbService.GetStockData(
+                SelectedStock,
+                startDate: startDateStr,
+                endDate: "20251231",
+                limit: _totalBars);
+
             Debug.WriteLine($"[DIAG] Data loaded: {_currentDataList?.Count ?? 0} bars");
+
+            // 数据不足 270 根时，往前取最近的 270 根（仍在 2026 年之前）
+            if (_currentDataList == null || _currentDataList.Count < _totalBars)
+            {
+                Debug.WriteLine($"[DIAG] Data insufficient, fetching recent {_totalBars} bars before 2026");
+                var allData = _dbService.GetStockData(SelectedStock, endDate: "20251231", limit: 2000);
+
+                if (allData.Count >= _totalBars)
+                {
+                    _currentDataList = allData.Skip(allData.Count - _totalBars).Take(_totalBars).ToList();
+                    _startDate = _currentDataList[0].Date;
+                    OnPropertyChanged(nameof(StartDate));
+                    Debug.WriteLine($"[DIAG] Fetched recent {_currentDataList.Count} bars from {_startDate:yyyy-MM-dd}");
+                }
+                else if (allData.Count > 0)
+                {
+                    _currentDataList = allData;
+                    _startDate = _currentDataList[0].Date;
+                    OnPropertyChanged(nameof(StartDate));
+                    Debug.WriteLine($"[DIAG] Warning: Stock only has {_currentDataList.Count} bars before 2026");
+                }
+            }
 
             if (_currentDataList == null || _currentDataList.Count == 0)
             {
-                MessageBox.Show("未找到数据");
+                MessageBox.Show("未找到 2026 年之前的数据");
                 return;
             }
 
@@ -175,6 +210,12 @@ namespace StockKLineTrainer
             Debug.WriteLine($"[DIAG] dataList count={dataList?.Count ?? 0}");
             if (dataList == null || dataList.Count == 0) return;
 
+            // ===== 滚动窗口计算 =====
+            int windowStart = !_isAnswerRevealed ? Math.Max(0, _currentVisibleBars - _trainingBars) : 0;
+            int windowEnd = !_isAnswerRevealed ? Math.Min(_currentVisibleBars, dataList.Count) : dataList.Count;
+            int visibleCount = windowEnd - windowStart;
+            // =======================
+
             var spOhlcList = dataList.Select(d => d.ToOHLC()).ToList();
             Debug.WriteLine($"[DIAG] spOhlcList count={spOhlcList.Count}, first={spOhlcList[0].Open}/{spOhlcList[0].High}/{spOhlcList[0].Low}/{spOhlcList[0].Close}");
 
@@ -189,21 +230,16 @@ namespace StockKLineTrainer
             candlestick.RisingColor = Color.FromHex("#FF3232");
             candlestick.FallingColor = Color.FromHex("#00A800");
 
-            int visibleCount = _isTrainingMode && !_isAnswerRevealed
-                ? Math.Min(_currentVisibleBars, dataList.Count)
-                : dataList.Count;
-            Debug.WriteLine($"[DIAG] visibleCount={visibleCount}, isTrainingMode={_isTrainingMode}");
-
-            AddMALines(dataList, visibleCount);
-
+            AddMALines(dataList, windowStart, visibleCount);
+            KlinePlot.Plot.Legend.IsVisible = false;
             KlinePlot.Plot.Axes.Left.Label.Text = "价格";
             KlinePlot.Plot.Axes.Bottom.Label.Text = "";
             KlinePlot.Plot.Grid.XAxisStyle.IsVisible = false;
 
-            SetupDateAxis(KlinePlot.Plot, dataList, visibleCount);
+            SetupDateAxis(KlinePlot.Plot, dataList, windowStart, visibleCount);
 
             Debug.WriteLine($"[DIAG] Before SetLimitsX: XRange={KlinePlot.Plot.Axes.GetLimits().XRange}");
-            KlinePlot.Plot.Axes.SetLimitsX(-0.5, visibleCount - 0.5);
+            KlinePlot.Plot.Axes.SetLimitsX(windowStart - 0.5, windowEnd - 0.5);
             KlinePlot.Plot.Axes.AutoScaleY();
             Debug.WriteLine($"[DIAG] After SetLimitsX: XRange={KlinePlot.Plot.Axes.GetLimits().XRange}, YRange={KlinePlot.Plot.Axes.GetLimits().YRange}");
 
@@ -228,20 +264,20 @@ namespace StockKLineTrainer
             Debug.WriteLine("[DIAG] Refresh called");
         }
 
-        private void AddMALines(List<StockData> dataList, int count)
+        private void AddMALines(List<StockData> dataList, int windowStart, int count)
         {
-            double[] xs = Enumerable.Range(0, count).Select(i => (double)i).ToArray();
+            double[] xs = Enumerable.Range(windowStart, count).Select(i => (double)i).ToArray();
 
-            double[] ma5 = dataList.Take(count).Select(d => d.MA5 ?? double.NaN).ToArray();
-            double[] ma10 = dataList.Take(count).Select(d => d.MA10 ?? double.NaN).ToArray();
-            double[] ma15 = dataList.Take(count).Select(d => d.MA20 ?? double.NaN).ToArray();
+            double[] ma5 = dataList.Skip(windowStart).Take(count).Select(d => d.MA5 ?? double.NaN).ToArray();
+            double[] ma10 = dataList.Skip(windowStart).Take(count).Select(d => d.MA10 ?? double.NaN).ToArray();
+            double[] ma15 = dataList.Skip(windowStart).Take(count).Select(d => d.MA20 ?? double.NaN).ToArray();
 
             if (ma5.All(double.IsNaN))
-                ma5 = CalculateMA(dataList.Take(count).Select(d => d.Close).ToArray(), 5);
+                ma5 = CalculateMA(dataList.Skip(windowStart).Take(count).Select(d => d.Close).ToArray(), 5);
             if (ma10.All(double.IsNaN))
-                ma10 = CalculateMA(dataList.Take(count).Select(d => d.Close).ToArray(), 10);
+                ma10 = CalculateMA(dataList.Skip(windowStart).Take(count).Select(d => d.Close).ToArray(), 10);
             if (ma15.All(double.IsNaN))
-                ma15 = CalculateMA(dataList.Take(count).Select(d => d.Close).ToArray(), 15);
+                ma15 = CalculateMA(dataList.Skip(windowStart).Take(count).Select(d => d.Close).ToArray(), 15);
 
             PlotMALine(xs, ma5, "#FFD700", "MA5");
             PlotMALine(xs, ma10, "#00BFFF", "MA10");
@@ -280,21 +316,24 @@ namespace StockKLineTrainer
             var dataList = _currentDataList;
             if (dataList == null || dataList.Count == 0) return;
 
-            int visibleCount = _isTrainingMode && !_isAnswerRevealed
-                ? Math.Min(_currentVisibleBars, dataList.Count)
-                : dataList.Count;
+            // ===== 滚动窗口计算 =====
+            int windowStart = !_isAnswerRevealed ? Math.Max(0, _currentVisibleBars - _trainingBars) : 0;
+            int windowEnd = !_isAnswerRevealed ? Math.Min(_currentVisibleBars, dataList.Count) : dataList.Count;
+            int visibleCount = windowEnd - windowStart;
+            // =======================
 
             VolPlot.Plot.Clear();
 
-            // 添加柱状图
+            // 添加柱状图（使用绝对索引）
             var bars = new List<ScottPlot.Bar>();
             for (int i = 0; i < visibleCount; i++)
             {
-                bool isRising = dataList[i].Close >= dataList[i].Open;
+                int dataIndex = windowStart + i;
+                bool isRising = dataList[dataIndex].Close >= dataList[dataIndex].Open;
                 bars.Add(new ScottPlot.Bar
                 {
-                    Position = i,
-                    Value = dataList[i].Volume,
+                    Position = dataIndex,
+                    Value = dataList[dataIndex].Volume,
                     FillColor = isRising
                         ? Color.FromHex("#FF3232")
                         : Color.FromHex("#00A800")
@@ -304,10 +343,10 @@ namespace StockKLineTrainer
             VolPlot.Plot.Add.Bars(bars);
 
             // 添加VOL均线
-            var volMA5 = dataList.Take(visibleCount).Select(d => d.VolMA5 ?? double.NaN).ToArray();
-            var volMA10 = dataList.Take(visibleCount).Select(d => d.VolMA10 ?? double.NaN).ToArray();
+            var volMA5 = dataList.Skip(windowStart).Take(visibleCount).Select(d => d.VolMA5 ?? double.NaN).ToArray();
+            var volMA10 = dataList.Skip(windowStart).Take(visibleCount).Select(d => d.VolMA10 ?? double.NaN).ToArray();
 
-            double[] xs = Enumerable.Range(0, visibleCount).Select(i => (double)i).ToArray();
+            double[] xs = Enumerable.Range(windowStart, visibleCount).Select(i => (double)i).ToArray();
 
             if (!volMA5.All(double.IsNaN))
             {
@@ -343,7 +382,7 @@ namespace StockKLineTrainer
             _volCursor.IsVisible = false;
 
             // 设置X轴范围
-            VolPlot.Plot.Axes.SetLimitsX(-0.5, visibleCount - 0.5);
+            VolPlot.Plot.Axes.SetLimitsX(windowStart - 0.5, windowEnd - 0.5);
             VolPlot.Plot.Axes.AutoScaleY();
 
             // 优化网格线
@@ -364,17 +403,19 @@ namespace StockKLineTrainer
             var dataList = _currentDataList;
             if (dataList == null || dataList.Count == 0) return;
 
-            int visibleCount = _isTrainingMode && !_isAnswerRevealed
-                ? Math.Min(_currentVisibleBars, dataList.Count)
-                : dataList.Count;
+            // ===== 滚动窗口计算 =====
+            int windowStart = !_isAnswerRevealed ? Math.Max(0, _currentVisibleBars - _trainingBars) : 0;
+            int windowEnd = !_isAnswerRevealed ? Math.Min(_currentVisibleBars, dataList.Count) : dataList.Count;
+            int visibleCount = windowEnd - windowStart;
+            // =======================
 
-            var visibleData = dataList.Take(visibleCount).ToList();
+            var visibleData = dataList.Skip(windowStart).Take(visibleCount).ToList();
 
             var difList = visibleData.Select(d => d.DIF).ToList();
             var deaList = visibleData.Select(d => d.DEA).ToList();
             var macdHistList = visibleData.Select(d => d.MACDHist).ToList();
 
-            double[] xs = Enumerable.Range(0, visibleCount).Select(i => (double)i).ToArray();
+            double[] xs = Enumerable.Range(windowStart, visibleCount).Select(i => (double)i).ToArray();
             double[] dif, dea, macd;
 
             if (difList.All(v => v.HasValue))
@@ -391,13 +432,13 @@ namespace StockKLineTrainer
 
             MacdPlot.Plot.Clear();
 
-            // MACD柱状图
+            // MACD柱状图（使用绝对索引）
             var macdBars = new List<ScottPlot.Bar>();
             for (int i = 0; i < macd.Length && i < visibleCount; i++)
             {
                 macdBars.Add(new ScottPlot.Bar
                 {
-                    Position = i,
+                    Position = windowStart + i,
                     Value = macd[i],
                     FillColor = macd[i] >= 0
                         ? Color.FromHex("#FF3232")
@@ -416,7 +457,7 @@ namespace StockKLineTrainer
             MacdPlot.Plot.Axes.Right.Label.Text = "";
 
             // 设置X轴日期
-            SetupDateAxis(MacdPlot.Plot, dataList, visibleCount);
+            SetupDateAxis(MacdPlot.Plot, dataList, windowStart, visibleCount);
 
             // 添加十字光标
             double[] macdCursorX = new double[] { 0, 0 };
@@ -428,7 +469,7 @@ namespace StockKLineTrainer
             _macdCursor.IsVisible = false;
 
             // 设置X轴范围
-            MacdPlot.Plot.Axes.SetLimitsX(-0.5, visibleCount - 0.5);
+            MacdPlot.Plot.Axes.SetLimitsX(windowStart - 0.5, windowEnd - 0.5);
 
             // 计算Y轴范围
             double macdMax = macd.Length > 0 ? macd.Max() : 0;
@@ -478,28 +519,33 @@ namespace StockKLineTrainer
             }
         }
 
-        private void SetupDateAxis(Plot plot, List<StockData> dataList, int visibleCount)
+        private void SetupDateAxis(Plot plot, List<StockData> dataList, int windowStart, int visibleCount)
         {
             if (dataList == null || dataList.Count == 0) return;
 
+            int windowEnd = Math.Min(windowStart + visibleCount, dataList.Count);
+            int actualVisible = windowEnd - windowStart;
+            if (actualVisible <= 0) return;
+
             var bottomAxis = plot.Axes.Bottom;
 
-            int tickCount = Math.Min(8, visibleCount);
-            int interval = Math.Max(1, visibleCount / tickCount);
+            int tickCount = Math.Min(8, actualVisible);
+            int interval = Math.Max(1, actualVisible / tickCount);
 
             var tickPositions = new List<double>();
             var tickLabels = new List<string>();
 
-            for (int i = 0; i < visibleCount; i += interval)
+            for (int i = 0; i < actualVisible; i += interval)
             {
-                tickPositions.Add(i);
-                tickLabels.Add(dataList[i].Date.ToString("MM-dd"));
+                int dataIndex = windowStart + i;
+                tickPositions.Add(dataIndex);
+                tickLabels.Add(dataList[dataIndex].Date.ToString("MM-dd"));
             }
 
-            if (tickPositions.Count == 0 || tickPositions.Last() != visibleCount - 1)
+            if (tickPositions.Count == 0 || tickPositions.Last() != windowEnd - 1)
             {
-                tickPositions.Add(visibleCount - 1);
-                tickLabels.Add(dataList[visibleCount - 1].Date.ToString("MM-dd"));
+                tickPositions.Add(windowEnd - 1);
+                tickLabels.Add(dataList[windowEnd - 1].Date.ToString("MM-dd"));
             }
 
             var tickGen = new ScottPlot.TickGenerators.NumericManual(
@@ -516,7 +562,7 @@ namespace StockKLineTrainer
         {
             if (_currentDataList == null || _currentDataList.Count == 0) return;
 
-            int displayIndex = _isTrainingMode && !_isAnswerRevealed
+            int displayIndex = !_isAnswerRevealed
                 ? Math.Min(_currentVisibleBars, _currentDataList.Count) - 1
                 : _currentDataList.Count - 1;
             if (displayIndex < 0) displayIndex = 0;
@@ -589,10 +635,30 @@ namespace StockKLineTrainer
 
         private void OnHoldOrWatch()
         {
-            if (!_isTrainingMode || _isAnswerRevealed) return;
-            if (_currentVisibleBars >= _totalBars) return;
+            if (_isAnswerRevealed) return;
 
-            _currentVisibleBars++;
+            // 如果还没进入训练模式，先进入
+            if (!_isTrainingMode)
+            {
+                _isTrainingMode = true;
+                _isAnswerRevealed = false;
+                _currentVisibleBars = _trainingBars;
+
+                // 直接用当前已加载的数据，不要重新去数据库取！
+                if (_currentDataList == null || _currentDataList.Count == 0)
+                {
+                    MessageBox.Show("当前没有数据，无法进入训练模式");
+                    _isTrainingMode = false;
+                    return;
+                }
+            }
+            else
+            {
+                // 已经在训练模式，推进下一根K线
+                if (_currentVisibleBars >= _totalBars) return;
+                _currentVisibleBars++;
+            }
+
             UpdatePriceChart();
             UpdateVolChart();
             UpdateMacdChart();
@@ -614,18 +680,21 @@ namespace StockKLineTrainer
         {
             if (KlinePlot != null)
             {
+                KlinePlot.UserInputProcessor.IsEnabled = false;  // ← 禁用拖拽/缩放
                 KlinePlot.MouseWheel += (s, e) => SyncChartsFrom(KlinePlot);
                 KlinePlot.MouseUp += (s, e) => SyncChartsFrom(KlinePlot);
                 KlinePlot.MouseMove += (s, e) => UpdateCrosshair(KlinePlot, e);
             }
             if (VolPlot != null)
             {
+                VolPlot.UserInputProcessor.IsEnabled = false;  // ← 禁用拖拽/缩放
                 VolPlot.MouseWheel += (s, e) => SyncChartsFrom(VolPlot);
                 VolPlot.MouseUp += (s, e) => SyncChartsFrom(VolPlot);
                 VolPlot.MouseMove += (s, e) => UpdateCrosshair(VolPlot, e);
             }
             if (MacdPlot != null)
             {
+                MacdPlot.UserInputProcessor.IsEnabled = false;  // ← 禁用拖拽/缩放
                 MacdPlot.MouseWheel += (s, e) => SyncChartsFrom(MacdPlot);
                 MacdPlot.MouseUp += (s, e) => SyncChartsFrom(MacdPlot);
                 MacdPlot.MouseMove += (s, e) => UpdateCrosshair(MacdPlot, e);
@@ -644,11 +713,12 @@ namespace StockKLineTrainer
             var dataList = _currentDataList;
             if (dataList == null || dataList.Count == 0) return;
 
-            int visibleCount = _isTrainingMode && !_isAnswerRevealed
-                ? Math.Min(_currentVisibleBars, dataList.Count)
-                : dataList.Count;
+            // ===== 滚动窗口范围判断 =====
+            int windowStart = !_isAnswerRevealed ? Math.Max(0, _currentVisibleBars - _trainingBars) : 0;
+            int windowEnd = !_isAnswerRevealed ? Math.Min(_currentVisibleBars, dataList.Count) : dataList.Count;
+            // =============================
 
-            if (x < -0.5 || x > visibleCount - 0.5) return;
+            if (x < windowStart - 0.5 || x > windowEnd - 0.5) return;
 
             UpdateCursorLine(KlinePlot, ref _klineCursor, x);
             UpdateCursorLine(VolPlot, ref _volCursor, x);

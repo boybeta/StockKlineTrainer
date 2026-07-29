@@ -208,12 +208,7 @@
                     </StackPanel>
 
                     <!-- 开始训练按钮 -->
-                    <Button HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,25,25,0"
-                            Background="#4A90D9" Foreground="White" FontSize="13" FontWeight="Bold"
-                            BorderThickness="0" Padding="10,4" Panel.ZIndex="1"
-                            Command="{Binding ToggleTrainingCommand}">
-                        开始
-                    </Button>
+                    
 
                     <!-- K线图 -->
                     <scottplot:WpfPlot x:Name="KlinePlot" Margin="40,65,10,0"/>
@@ -395,14 +390,41 @@
                             </Button>
                         </Grid>
 
+
                         <!-- 持有/观望 -->
-                        <Button Height="42" Margin="0,0,0,8" Background="#FF4081" Foreground="White" BorderThickness="0" FontWeight="Bold">
+                        <Button Height="42" Margin="0,0,0,8" BorderThickness="0" FontWeight="Bold"
+        Command="{Binding HoldOrWatchCommand}">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="#FF4081"/>
+                                    <Setter Property="Foreground" Value="White"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                                                    <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="Black"/>
+                                            <Setter Property="Foreground" Value="White"/>
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter Property="Background" Value="#333333"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="持有 / 观望" FontSize="14"/>
                                 <TextBlock Text="H / Space" FontSize="10" Opacity="0.7" Margin="10,0,0,0"/>
                             </StackPanel>
                         </Button>
-
                         <!-- 自动播放 -->
                         <Grid Margin="0,0,0,12">
                             <Grid.ColumnDefinitions>
