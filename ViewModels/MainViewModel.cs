@@ -27,6 +27,15 @@ namespace StockKLineTrainer
         private bool _isInitializing = true;
         private readonly Random _random = new Random();
 
+        // ===== 十字光标（替换旧的 Scatter 光标）=====
+        private ScottPlot.Plottables.VerticalLine? _klineVLine;
+        private ScottPlot.Plottables.HorizontalLine? _klineHLine;
+        private ScottPlot.Plottables.VerticalLine? _volVLine;
+        private ScottPlot.Plottables.VerticalLine? _macdVLine;
+
+        // ===== 训练开始标记线 =====
+        private double _startMarkerIndex = -1;   // -1 表示无标记
+
         private string? _selectedStock;
         public string? SelectedStock
         {
@@ -67,9 +76,6 @@ namespace StockKLineTrainer
         public WpfPlot? KlinePlot { get; set; }
         public WpfPlot? VolPlot { get; set; }
         public WpfPlot? MacdPlot { get; set; }
-        private ScottPlot.Plottables.Scatter? _klineCursor;
-        private ScottPlot.Plottables.Scatter? _volCursor;
-        private ScottPlot.Plottables.Scatter? _macdCursor;
 
         public ICommand RefreshCommand { get; }
         public ICommand RandomStockCommand { get; }
@@ -113,6 +119,8 @@ namespace StockKLineTrainer
 
         private void LoadRandomStock()
         {
+            _startMarkerIndex = -1;   // 切股票时清除标记线
+
             if (StockList.Count == 0) return;
             if (StockList.Count == 1)
             {
@@ -120,13 +128,11 @@ namespace StockKLineTrainer
                 return;
             }
 
-            // 最多尝试 10 次，确保选到 2026 年之前有足够数据的股票
             for (int attempt = 0; attempt < 10; attempt++)
             {
                 string newStock = StockList[_random.Next(StockList.Count)];
                 if (newStock == _selectedStock && StockList.Count > 1) continue;
 
-                // 改：加上 endDate 限制
                 var allData = _dbService.GetStockData(newStock, startDate: "19900101", endDate: "20251231", limit: 10000);
                 if (allData.Count == 0) continue;
 
@@ -158,7 +164,6 @@ namespace StockKLineTrainer
             string startDateStr = _startDate.ToString("yyyyMMdd");
             Debug.WriteLine($"[DIAG] Query startDate={startDateStr}");
 
-            // 改：加上 endDate 限制，只取 2026 年之前的数据
             _currentDataList = _dbService.GetStockData(
                 SelectedStock,
                 startDate: startDateStr,
@@ -167,7 +172,6 @@ namespace StockKLineTrainer
 
             Debug.WriteLine($"[DIAG] Data loaded: {_currentDataList?.Count ?? 0} bars");
 
-            // 数据不足 270 根时，往前取最近的 270 根（仍在 2026 年之前）
             if (_currentDataList == null || _currentDataList.Count < _totalBars)
             {
                 Debug.WriteLine($"[DIAG] Data insufficient, fetching recent {_totalBars} bars before 2026");
@@ -210,11 +214,9 @@ namespace StockKLineTrainer
             Debug.WriteLine($"[DIAG] dataList count={dataList?.Count ?? 0}");
             if (dataList == null || dataList.Count == 0) return;
 
-            // ===== 滚动窗口计算 =====
             int windowStart = !_isAnswerRevealed ? Math.Max(0, _currentVisibleBars - _trainingBars) : 0;
             int windowEnd = !_isAnswerRevealed ? Math.Min(_currentVisibleBars, dataList.Count) : dataList.Count;
             int visibleCount = windowEnd - windowStart;
-            // =======================
 
             var spOhlcList = dataList.Select(d => d.ToOHLC()).ToList();
             Debug.WriteLine($"[DIAG] spOhlcList count={spOhlcList.Count}, first={spOhlcList[0].Open}/{spOhlcList[0].High}/{spOhlcList[0].Low}/{spOhlcList[0].Close}");
@@ -243,22 +245,35 @@ namespace StockKLineTrainer
             KlinePlot.Plot.Axes.AutoScaleY();
             Debug.WriteLine($"[DIAG] After SetLimitsX: XRange={KlinePlot.Plot.Axes.GetLimits().XRange}, YRange={KlinePlot.Plot.Axes.GetLimits().YRange}");
 
-            // 添加十字光标
-            double[] cursorX = new double[] { 0, 0 };
-            double[] cursorY = new double[] { -99999, 99999 };
-            _klineCursor = KlinePlot.Plot.Add.Scatter(cursorX, cursorY);
-            _klineCursor.Color = Color.FromHex("#999999");
-            _klineCursor.LineWidth = 1;
-            _klineCursor.MarkerSize = 0;
-            _klineCursor.IsVisible = false;
+            // ===== 十字光标：竖直 + 水平虚线 =====
+            _klineVLine = KlinePlot.Plot.Add.VerticalLine(0);
+            _klineVLine.Color = Color.FromHex("#000000");
+            _klineVLine.LineWidth = 0.5f;
+            _klineVLine.LinePattern = new LinePattern(new float[] { 2, 1 }, 0, "Custom");
+            _klineVLine.IsVisible = false;
+
+            _klineHLine = KlinePlot.Plot.Add.HorizontalLine(0);
+            _klineHLine.Color = Color.FromHex("#000000");
+            _klineHLine.LineWidth = 0.5f;
+            _klineHLine.LinePattern = new LinePattern(new float[] { 2, 1 }, 0, "Custom");
+            _klineHLine.IsVisible = false;
 
             // 优化网格线
             KlinePlot.Plot.Grid.MajorLineColor = Color.FromHex("#F0F0F0");
             KlinePlot.Plot.Grid.MajorLineWidth = 0.5f;
 
-            // ===== 统一左右边距 =====
+            // 统一左右边距
             KlinePlot.Plot.Axes.Left.MinimumSize = 50;
             KlinePlot.Plot.Axes.Right.MinimumSize = 50;
+
+            // ===== 训练开始标记线（蓝色竖虚线）=====
+            if (_isTrainingMode && _startMarkerIndex >= 0)
+            {
+                var marker = KlinePlot.Plot.Add.VerticalLine(_startMarkerIndex);
+                marker.Color = Color.FromHex("#2196F3");      // 蓝色
+                marker.LineWidth = 2;
+                marker.LinePattern = LinePattern.Dashed;
+            }
 
             KlinePlot.Refresh();
             Debug.WriteLine("[DIAG] Refresh called");
@@ -316,15 +331,12 @@ namespace StockKLineTrainer
             var dataList = _currentDataList;
             if (dataList == null || dataList.Count == 0) return;
 
-            // ===== 滚动窗口计算 =====
             int windowStart = !_isAnswerRevealed ? Math.Max(0, _currentVisibleBars - _trainingBars) : 0;
             int windowEnd = !_isAnswerRevealed ? Math.Min(_currentVisibleBars, dataList.Count) : dataList.Count;
             int visibleCount = windowEnd - windowStart;
-            // =======================
 
             VolPlot.Plot.Clear();
 
-            // 添加柱状图（使用绝对索引）
             var bars = new List<ScottPlot.Bar>();
             for (int i = 0; i < visibleCount; i++)
             {
@@ -342,7 +354,6 @@ namespace StockKLineTrainer
 
             VolPlot.Plot.Add.Bars(bars);
 
-            // 添加VOL均线
             var volMA5 = dataList.Skip(windowStart).Take(visibleCount).Select(d => d.VolMA5 ?? double.NaN).ToArray();
             var volMA10 = dataList.Skip(windowStart).Take(visibleCount).Select(d => d.VolMA10 ?? double.NaN).ToArray();
 
@@ -364,32 +375,24 @@ namespace StockKLineTrainer
                 line10.MarkerSize = 0;
             }
 
-            // Y轴放右侧，左侧隐藏但占位
             VolPlot.Plot.Axes.Left.IsVisible = false;
             VolPlot.Plot.Axes.Right.IsVisible = true;
             VolPlot.Plot.Axes.Right.Label.Text = "";
-
-            // 隐藏底部X轴标签
             VolPlot.Plot.Axes.Bottom.IsVisible = false;
 
-            // 添加十字光标
-            double[] volCursorX = new double[] { 0, 0 };
-            double[] volCursorY = new double[] { -99999, 99999 };
-            _volCursor = VolPlot.Plot.Add.Scatter(volCursorX, volCursorY);
-            _volCursor.Color = Color.FromHex("#999999");
-            _volCursor.LineWidth = 1;
-            _volCursor.MarkerSize = 0;
-            _volCursor.IsVisible = false;
+            // ===== 竖直虚线光标 =====
+            _volVLine = VolPlot.Plot.Add.VerticalLine(0);
+            _volVLine.Color = Color.FromHex("#000000");
+            _volVLine.LineWidth = 0.5f;
+            _volVLine.LinePattern = new LinePattern(new float[] { 2, 1 }, 0, "Custom");
+            _volVLine.IsVisible = false;
 
-            // 设置X轴范围
             VolPlot.Plot.Axes.SetLimitsX(windowStart - 0.5, windowEnd - 0.5);
             VolPlot.Plot.Axes.AutoScaleY();
 
-            // 优化网格线
             VolPlot.Plot.Grid.MajorLineColor = Color.FromHex("#F0F0F0");
             VolPlot.Plot.Grid.MajorLineWidth = 0.5f;
 
-            // ===== 统一左右边距 =====
             VolPlot.Plot.Axes.Left.MinimumSize = 50;
             VolPlot.Plot.Axes.Right.MinimumSize = 50;
 
@@ -403,11 +406,9 @@ namespace StockKLineTrainer
             var dataList = _currentDataList;
             if (dataList == null || dataList.Count == 0) return;
 
-            // ===== 滚动窗口计算 =====
             int windowStart = !_isAnswerRevealed ? Math.Max(0, _currentVisibleBars - _trainingBars) : 0;
             int windowEnd = !_isAnswerRevealed ? Math.Min(_currentVisibleBars, dataList.Count) : dataList.Count;
             int visibleCount = windowEnd - windowStart;
-            // =======================
 
             var visibleData = dataList.Skip(windowStart).Take(visibleCount).ToList();
 
@@ -432,7 +433,6 @@ namespace StockKLineTrainer
 
             MacdPlot.Plot.Clear();
 
-            // MACD柱状图（使用绝对索引）
             var macdBars = new List<ScottPlot.Bar>();
             for (int i = 0; i < macd.Length && i < visibleCount; i++)
             {
@@ -447,31 +447,24 @@ namespace StockKLineTrainer
             }
             MacdPlot.Plot.Add.Bars(macdBars);
 
-            // DIF/DEA线
             PlotMacdLine(xs, dif, "#FFD700", "DIF");
             PlotMacdLine(xs, dea, "#00BFFF", "DEA");
 
-            // Y轴放右侧，左侧隐藏但占位
             MacdPlot.Plot.Axes.Left.IsVisible = false;
             MacdPlot.Plot.Axes.Right.IsVisible = true;
             MacdPlot.Plot.Axes.Right.Label.Text = "";
 
-            // 设置X轴日期
             SetupDateAxis(MacdPlot.Plot, dataList, windowStart, visibleCount);
 
-            // 添加十字光标
-            double[] macdCursorX = new double[] { 0, 0 };
-            double[] macdCursorY = new double[] { -99999, 99999 };
-            _macdCursor = MacdPlot.Plot.Add.Scatter(macdCursorX, macdCursorY);
-            _macdCursor.Color = Color.FromHex("#999999");
-            _macdCursor.LineWidth = 1;
-            _macdCursor.MarkerSize = 0;
-            _macdCursor.IsVisible = false;
+            // ===== 竖直虚线光标 =====
+            _macdVLine = MacdPlot.Plot.Add.VerticalLine(0);
+            _macdVLine.Color = Color.FromHex("#000000");
+            _macdVLine.LineWidth = 0.5f;
+            _macdVLine.LinePattern = new LinePattern(new float[] { 2, 1 }, 0, "Custom");
+            _macdVLine.IsVisible = false;
 
-            // 设置X轴范围
             MacdPlot.Plot.Axes.SetLimitsX(windowStart - 0.5, windowEnd - 0.5);
 
-            // 计算Y轴范围
             double macdMax = macd.Length > 0 ? macd.Max() : 0;
             double macdMin = macd.Length > 0 ? macd.Min() : 0;
             double difMax = dif.Length > 0 ? dif.Max() : 0;
@@ -484,11 +477,9 @@ namespace StockKLineTrainer
 
             MacdPlot.Plot.Axes.SetLimitsY(yMin * 1.2, yMax * 1.2);
 
-            // 优化网格线
             MacdPlot.Plot.Grid.MajorLineColor = Color.FromHex("#F0F0F0");
             MacdPlot.Plot.Grid.MajorLineWidth = 0.5f;
 
-            // ===== 统一左右边距 =====
             MacdPlot.Plot.Axes.Left.MinimumSize = 50;
             MacdPlot.Plot.Axes.Right.MinimumSize = 50;
 
@@ -579,7 +570,6 @@ namespace StockKLineTrainer
 
         private void ToggleTrainingMode()
         {
-            // 防止 500ms 内重复点击导致状态错乱
             if ((DateTime.Now - _lastToggleTime).TotalMilliseconds < 500) return;
             _lastToggleTime = DateTime.Now;
 
@@ -591,7 +581,6 @@ namespace StockKLineTrainer
             {
                 TrainingStatus = $"训练模式：预测后{_totalBars - _trainingBars}根K线走势";
 
-                // 基于当前股票取最近 _totalBars 根数据（不切换股票）
                 if (!string.IsNullOrEmpty(SelectedStock))
                 {
                     var allData = _dbService.GetStockData(SelectedStock, limit: 2000);
@@ -616,6 +605,7 @@ namespace StockKLineTrainer
             }
             else
             {
+                _startMarkerIndex = -1;   // 退出训练清除标记线
                 TrainingStatus = "浏览模式";
                 LoadData();
             }
@@ -637,24 +627,26 @@ namespace StockKLineTrainer
         {
             if (_isAnswerRevealed) return;
 
-            // 如果还没进入训练模式，先进入
+            bool wasTraining = _isTrainingMode;
+
             if (!_isTrainingMode)
             {
                 _isTrainingMode = true;
                 _isAnswerRevealed = false;
                 _currentVisibleBars = _trainingBars;
 
-                // 直接用当前已加载的数据，不要重新去数据库取！
                 if (_currentDataList == null || _currentDataList.Count == 0)
                 {
                     MessageBox.Show("当前没有数据，无法进入训练模式");
                     _isTrainingMode = false;
                     return;
                 }
+
+                // 记录开始标记线位置：当前可见最右端（下一根推进的起点）
+                _startMarkerIndex = _currentVisibleBars - 0.5;
             }
             else
             {
-                // 已经在训练模式，推进下一根K线
                 if (_currentVisibleBars >= _totalBars) return;
                 _currentVisibleBars++;
             }
@@ -680,30 +672,36 @@ namespace StockKLineTrainer
         {
             if (KlinePlot != null)
             {
-                KlinePlot.UserInputProcessor.IsEnabled = false;  // ← 禁用拖拽/缩放
+                KlinePlot.UserInputProcessor.IsEnabled = false;
                 KlinePlot.MouseWheel += (s, e) => SyncChartsFrom(KlinePlot);
                 KlinePlot.MouseUp += (s, e) => SyncChartsFrom(KlinePlot);
                 KlinePlot.MouseMove += (s, e) => UpdateCrosshair(KlinePlot, e);
+                KlinePlot.MouseEnter += (s, e) => KlinePlot.Cursor = System.Windows.Input.Cursors.Cross;
+                KlinePlot.MouseLeave += (s, e) => { KlinePlot.Cursor = System.Windows.Input.Cursors.Arrow; HideCrosshair(); };
             }
             if (VolPlot != null)
             {
-                VolPlot.UserInputProcessor.IsEnabled = false;  // ← 禁用拖拽/缩放
+                VolPlot.UserInputProcessor.IsEnabled = false;
                 VolPlot.MouseWheel += (s, e) => SyncChartsFrom(VolPlot);
                 VolPlot.MouseUp += (s, e) => SyncChartsFrom(VolPlot);
                 VolPlot.MouseMove += (s, e) => UpdateCrosshair(VolPlot, e);
+                VolPlot.MouseEnter += (s, e) => VolPlot.Cursor = System.Windows.Input.Cursors.Cross;
+                VolPlot.MouseLeave += (s, e) => { VolPlot.Cursor = System.Windows.Input.Cursors.Arrow; HideCrosshair(); };
             }
             if (MacdPlot != null)
             {
-                MacdPlot.UserInputProcessor.IsEnabled = false;  // ← 禁用拖拽/缩放
+                MacdPlot.UserInputProcessor.IsEnabled = false;
                 MacdPlot.MouseWheel += (s, e) => SyncChartsFrom(MacdPlot);
                 MacdPlot.MouseUp += (s, e) => SyncChartsFrom(MacdPlot);
                 MacdPlot.MouseMove += (s, e) => UpdateCrosshair(MacdPlot, e);
+                MacdPlot.MouseEnter += (s, e) => MacdPlot.Cursor = System.Windows.Input.Cursors.Cross;
+                MacdPlot.MouseLeave += (s, e) => { MacdPlot.Cursor = System.Windows.Input.Cursors.Arrow; HideCrosshair(); };
             }
         }
 
         private void UpdateCrosshair(WpfPlot source, System.Windows.Input.MouseEventArgs e)
         {
-            if (_klineCursor == null || _volCursor == null || _macdCursor == null) return;
+            if (_klineVLine == null) return;
 
             var pos = e.GetPosition(source);
             Pixel mousePixel = new(pos.X, pos.Y);
@@ -713,37 +711,46 @@ namespace StockKLineTrainer
             var dataList = _currentDataList;
             if (dataList == null || dataList.Count == 0) return;
 
-            // ===== 滚动窗口范围判断 =====
             int windowStart = !_isAnswerRevealed ? Math.Max(0, _currentVisibleBars - _trainingBars) : 0;
             int windowEnd = !_isAnswerRevealed ? Math.Min(_currentVisibleBars, dataList.Count) : dataList.Count;
-            // =============================
 
-            if (x < windowStart - 0.5 || x > windowEnd - 0.5) return;
+            if (x < windowStart - 0.5 || x > windowEnd - 0.5)
+            {
+                HideCrosshair();
+                return;
+            }
 
-            UpdateCursorLine(KlinePlot, ref _klineCursor, x);
-            UpdateCursorLine(VolPlot, ref _volCursor, x);
-            UpdateCursorLine(MacdPlot, ref _macdCursor, x);
+            // 同步三个图的竖直虚线
+            if (_klineVLine != null) { _klineVLine.X = x; _klineVLine.IsVisible = true; }
+            if (_volVLine != null) { _volVLine.X = x; _volVLine.IsVisible = true; }
+            if (_macdVLine != null) { _macdVLine.X = x; _macdVLine.IsVisible = true; }
+
+            // K线图的水平虚线（仅当鼠标在K线图上时）
+            if (source == KlinePlot && _klineHLine != null)
+            {
+                _klineHLine.Y = mouseCoords.Y;
+                _klineHLine.IsVisible = true;
+            }
+            else if (_klineHLine != null)
+            {
+                _klineHLine.IsVisible = false;
+            }
 
             KlinePlot?.Refresh();
             VolPlot?.Refresh();
             MacdPlot?.Refresh();
         }
 
-        private void UpdateCursorLine(WpfPlot? plot, ref ScottPlot.Plottables.Scatter? cursor, double x)
+        private void HideCrosshair()
         {
-            if (plot == null) return;
+            if (_klineVLine != null) _klineVLine.IsVisible = false;
+            if (_klineHLine != null) _klineHLine.IsVisible = false;
+            if (_volVLine != null) _volVLine.IsVisible = false;
+            if (_macdVLine != null) _macdVLine.IsVisible = false;
 
-            if (cursor != null)
-            {
-                plot.Plot.Remove(cursor);
-            }
-
-            double[] xs = new double[] { x, x };
-            double[] ys = new double[] { -99999, 99999 };
-            cursor = plot.Plot.Add.Scatter(xs, ys);
-            cursor.Color = Color.FromHex("#999999");
-            cursor.LineWidth = 1;
-            cursor.MarkerSize = 0;
+            KlinePlot?.Refresh();
+            VolPlot?.Refresh();
+            MacdPlot?.Refresh();
         }
 
         private void SyncChartsFrom(WpfPlot source)
