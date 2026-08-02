@@ -13,7 +13,6 @@
         Background="#F5F5F5">
 
     <Window.Resources>
-        <!-- 周期按钮样式 -->
         <Style x:Key="PeriodBtn" TargetType="Button">
             <Setter Property="Width" Value="44"/>
             <Setter Property="Height" Value="26"/>
@@ -30,7 +29,6 @@
             <Setter Property="Foreground" Value="White"/>
         </Style>
 
-        <!-- 操作按钮样式 -->
         <Style x:Key="ActionBtn" TargetType="Button">
             <Setter Property="Height" Value="55"/>
             <Setter Property="FontSize" Value="16"/>
@@ -40,7 +38,6 @@
             <Setter Property="Foreground" Value="White"/>
         </Style>
 
-        <!-- 速度按钮样式 -->
         <Style x:Key="SpeedBtn" TargetType="Button">
             <Setter Property="Width" Value="44"/>
             <Setter Property="Height" Value="32"/>
@@ -109,47 +106,47 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="28.61" FontSize="20" FontWeight="Bold" Foreground="#333"/>
+                        <TextBlock Text="{Binding CurrentPrice, FallbackValue=--}" FontSize="20" FontWeight="Bold" Foreground="#333"/>
                         <TextBlock Text="现价" FontSize="11" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                        <TextBlock Text="-0.39" FontSize="20" FontWeight="Bold" Foreground="#00A800"/>
+                        <TextBlock Text="{Binding PriceChange, FallbackValue=--}" FontSize="20" FontWeight="Bold" Foreground="{Binding PriceChangeBrush}"/>
                         <TextBlock Text="涨跌" FontSize="11" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="3" VerticalAlignment="Center">
-                        <TextBlock Text="-1.28%" FontSize="20" FontWeight="Bold" Foreground="#00A800"/>
+                        <TextBlock Text="{Binding PriceChangePct, FallbackValue=--}" FontSize="20" FontWeight="Bold" Foreground="{Binding PriceChangeBrush}"/>
                         <TextBlock Text="涨跌幅" FontSize="11" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="4" VerticalAlignment="Center">
-                        <TextBlock Text="28.98" FontSize="17" FontWeight="Bold" Foreground="#333"/>
+                        <TextBlock Text="{Binding OpenPrice, FallbackValue=--}" FontSize="17" FontWeight="Bold" Foreground="#333"/>
                         <TextBlock Text="开盘" FontSize="11" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="5" VerticalAlignment="Center">
-                        <TextBlock Text="29.01" FontSize="17" FontWeight="Bold" Foreground="#333"/>
+                        <TextBlock Text="{Binding HighPrice, FallbackValue=--}" FontSize="17" FontWeight="Bold" Foreground="#333"/>
                         <TextBlock Text="最高" FontSize="11" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="6" VerticalAlignment="Center">
-                        <TextBlock Text="28.52" FontSize="17" FontWeight="Bold" Foreground="#333"/>
+                        <TextBlock Text="{Binding LowPrice, FallbackValue=--}" FontSize="17" FontWeight="Bold" Foreground="#333"/>
                         <TextBlock Text="最低" FontSize="11" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="7" VerticalAlignment="Center">
-                        <TextBlock Text="0.54" FontSize="17" FontWeight="Bold" Foreground="#333"/>
+                        <TextBlock Text="{Binding VolumeRatio, FallbackValue=--}" FontSize="17" FontWeight="Bold" Foreground="#333"/>
                         <TextBlock Text="量比" FontSize="11" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="8" VerticalAlignment="Center">
-                        <TextBlock Text="0.79%" FontSize="17" FontWeight="Bold" Foreground="#333"/>
+                        <TextBlock Text="{Binding TurnoverRate, FallbackValue=--}" FontSize="17" FontWeight="Bold" Foreground="#333"/>
                         <TextBlock Text="换手" FontSize="11" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="9" VerticalAlignment="Center">
-                        <TextBlock Text="xxxx-xx-04" FontSize="17" FontWeight="Bold" Foreground="#333"/>
+                        <TextBlock Text="{Binding CurrentDate, FallbackValue=xxxx-xx-xx}" FontSize="17" FontWeight="Bold" Foreground="#333"/>
                         <TextBlock Text="日期" FontSize="11" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Grid>
@@ -179,36 +176,39 @@
                     <!-- 左上角指标文字 -->
                     <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,8" Panel.ZIndex="1">
                         <TextBlock FontSize="11">
-							<Run Text="MA(5,10,20)  " Foreground="#999"/>
-							<Run Text="MA5:" Foreground="#999"/>
-							<Run Text="28.57 " Foreground="#FFD700" FontWeight="Bold"/>
-							<Run Text="MA10:" Foreground="#999"/>
-							<Run Text="28.18 " Foreground="#00BFFF" FontWeight="Bold"/>
-							<Run Text="MA20:" Foreground="#999"/>
-							<Run Text="27.71" Foreground="#FF69B4" FontWeight="Bold"/>
+                            <Run Text="MA(5,10,20)  " Foreground="#999"/>
+                            <Run Text="MA5:" Foreground="#999"/>
+                            <Run Text="{Binding MA5Value, FallbackValue=--}" Foreground="#FFD700" FontWeight="Bold"/>
+                            <Run Text=" " Foreground="#999"/>
+                            <Run Text="MA10:" Foreground="#999"/>
+                            <Run Text="{Binding MA10Value, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
+                            <Run Text=" " Foreground="#999"/>
+                            <Run Text="MA20:" Foreground="#999"/>
+                            <Run Text="{Binding MA20Value, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
                         </TextBlock>
                         <TextBlock FontSize="11" Margin="0,3,0,0">
-							<Run Text="EMA(5,10,20) " Foreground="#999"/>
-							<Run Text="EMA5:" Foreground="#999"/>
-							<Run Text="28.56 " Foreground="#FFD700" FontWeight="Bold"/>
-							<Run Text="EMA10:" Foreground="#999"/>
-							<Run Text="28.27 " Foreground="#00BFFF" FontWeight="Bold"/>
-							<Run Text="EMA20:" Foreground="#999"/>
-							<Run Text="28.03" Foreground="#FF69B4" FontWeight="Bold"/>
+                            <Run Text="EMA(5,10,20) " Foreground="#999"/>
+                            <Run Text="EMA5:" Foreground="#999"/>
+                            <Run Text="{Binding EMA5Value, FallbackValue=--}" Foreground="#FFD700" FontWeight="Bold"/>
+                            <Run Text=" " Foreground="#999"/>
+                            <Run Text="EMA10:" Foreground="#999"/>
+                            <Run Text="{Binding EMA10Value, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
+                            <Run Text=" " Foreground="#999"/>
+                            <Run Text="EMA20:" Foreground="#999"/>
+                            <Run Text="{Binding EMA20Value, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
                         </TextBlock>
                         <TextBlock FontSize="11" Margin="0,3,0,0">
-							<Run Text="BOLL(20,2)   " Foreground="#999"/>
-							<Run Text="UP:" Foreground="#999"/>
-							<Run Text="28.91 " Foreground="#FF69B4" FontWeight="Bold"/>
-							<Run Text="MID:" Foreground="#999"/>
-							<Run Text="27.71 " Foreground="#00BFFF" FontWeight="Bold"/>
-							<Run Text="DN:" Foreground="#999"/>
-							<Run Text="26.51" Foreground="#00A800" FontWeight="Bold"/>
+                            <Run Text="BOLL(20,2)   " Foreground="#999"/>
+                            <Run Text="UP:" Foreground="#999"/>
+                            <Run Text="{Binding BollUpValue, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
+                            <Run Text=" " Foreground="#999"/>
+                            <Run Text="MID:" Foreground="#999"/>
+                            <Run Text="{Binding BollMidValue, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
+                            <Run Text=" " Foreground="#999"/>
+                            <Run Text="DN:" Foreground="#999"/>
+                            <Run Text="{Binding BollDnValue, FallbackValue=--}" Foreground="#00A800" FontWeight="Bold"/>
                         </TextBlock>
                     </StackPanel>
-
-                    <!-- 开始训练按钮 -->
-                    
 
                     <!-- K线图 -->
                     <scottplot:WpfPlot x:Name="KlinePlot" Margin="40,65,10,0"/>
@@ -220,13 +220,15 @@
                 <Grid>
                     <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,4" Panel.ZIndex="1">
                         <TextBlock FontSize="11">
-							<Run Text="VOL(5,10) " Foreground="#999"/>
-							<Run Text="MA5:" Foreground="#999"/>
-							<Run Text="6.123M " Foreground="#FFD700" FontWeight="Bold"/>
-							<Run Text="MA10:" Foreground="#999"/>
-							<Run Text="5.586M " Foreground="#00BFFF" FontWeight="Bold"/>
-							<Run Text="VOLUME:" Foreground="#999"/>
-							<Run Text="4.365M" Foreground="#333" FontWeight="Bold"/>
+                            <Run Text="VOL(5,10) " Foreground="#999"/>
+                            <Run Text="MA5:" Foreground="#999"/>
+                            <Run Text="{Binding VolMA5Value, FallbackValue=--}" Foreground="#FFD700" FontWeight="Bold"/>
+                            <Run Text=" " Foreground="#999"/>
+                            <Run Text="MA10:" Foreground="#999"/>
+                            <Run Text="{Binding VolMA10Value, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
+                            <Run Text=" " Foreground="#999"/>
+                            <Run Text="VOLUME:" Foreground="#999"/>
+                            <Run Text="{Binding VolumeValue, FallbackValue=--}" Foreground="#333" FontWeight="Bold"/>
                         </TextBlock>
                     </StackPanel>
                     <scottplot:WpfPlot x:Name="VolPlot" Margin="40,0,10,0"/>
@@ -242,13 +244,15 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Panel.ZIndex="1" Grid.ColumnSpan="2">
                         <TextBlock FontSize="11">
-							<Run Text="MACD(12,26,9) " Foreground="#999"/>
-							<Run Text="DIF:" Foreground="#999"/>
-							<Run Text="0.1221 " Foreground="#FFD700" FontWeight="Bold"/>
-							<Run Text="DEA:" Foreground="#999"/>
-							<Run Text="-0.1168 " Foreground="#00BFFF" FontWeight="Bold"/>
-							<Run Text="MACD:" Foreground="#999"/>
-							<Run Text="0.4778" Foreground="#FF69B4" FontWeight="Bold"/>
+                            <Run Text="MACD(12,26,9) " Foreground="#999"/>
+                            <Run Text="DIF:" Foreground="#999"/>
+                            <Run Text="{Binding DIFValue, FallbackValue=--}" Foreground="#FFD700" FontWeight="Bold"/>
+                            <Run Text=" " Foreground="#999"/>
+                            <Run Text="DEA:" Foreground="#999"/>
+                            <Run Text="{Binding DEAValue, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
+                            <Run Text=" " Foreground="#999"/>
+                            <Run Text="MACD:" Foreground="#999"/>
+                            <Run Text="{Binding MACDValue, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
                         </TextBlock>
                     </StackPanel>
                     <scottplot:WpfPlot x:Name="MacdPlot" Margin="40,0,10,0" Grid.ColumnSpan="2"/>
@@ -257,18 +261,14 @@
         </Grid>
 
         <!-- ==================== 右侧信息面板 ==================== -->
-        <!-- ==================== 右侧信息面板 ==================== -->
-        <!-- ==================== 右侧信息面板 ==================== -->
         <Border Grid.Column="1" Background="White" Margin="5,10,10,10" CornerRadius="6" Padding="16">
             <Grid>
                 <Grid.RowDefinitions>
-                    <!-- 内容区域 -->
                     <RowDefinition Height="*"/>
-                    <!-- 底部按钮 -->
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- 内容区域 - 使用 ScrollViewer 但隐藏滚动条 -->
+                <!-- 内容区域 -->
                 <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Hidden" Margin="0,-60,0,0">
                     <StackPanel>
 
@@ -292,28 +292,28 @@
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="总爆竹" VerticalAlignment="Center" Foreground="#666" FontSize="12"/>
-                            <TextBlock Grid.Row="0" Grid.Column="1" Text="8219.07" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding TotalFirecrackers, StringFormat=F2, FallbackValue=10000.00}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
 
                             <TextBlock Grid.Row="1" Grid.Column="0" Text="使用爆竹数量" VerticalAlignment="Center" Foreground="#666" FontSize="12"/>
-                            <TextBlock Grid.Row="1" Grid.Column="1" Text="8219.07" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding UsedFirecrackers, StringFormat=F2, FallbackValue=0.00}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
 
                             <TextBlock Grid.Row="2" Grid.Column="0" Text="未使用爆竹数量" VerticalAlignment="Center" Foreground="#666" FontSize="12"/>
-                            <TextBlock Grid.Row="2" Grid.Column="1" Text="0" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding UnusedFirecrackers, StringFormat=F2, FallbackValue=10000.00}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
 
                             <TextBlock Grid.Row="3" Grid.Column="0" Text="本局收益" VerticalAlignment="Center" Foreground="#666" FontSize="12"/>
-                            <TextBlock Grid.Row="3" Grid.Column="1" Text="0.00%" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="#999"/>
+                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding TotalProfitAmount, StringFormat={}{0:F2}, FallbackValue=0.00}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="{Binding TotalProfitBrush}"/>
 
                             <TextBlock Grid.Row="4" Grid.Column="0" Text="开仓收益" VerticalAlignment="Center" Foreground="#666" FontSize="12"/>
-                            <TextBlock Grid.Row="4" Grid.Column="1" Text="0.00%" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="#999"/>
+                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding OpenProfitAmount, StringFormat={}{0:F2}, FallbackValue=0.00}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="{Binding OpenProfitBrush}"/>
 
                             <TextBlock Grid.Row="5" Grid.Column="0" Text="成本价" VerticalAlignment="Center" Foreground="#666" FontSize="12"/>
-                            <TextBlock Grid.Row="5" Grid.Column="1" Text="--" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="#999"/>
+                            <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding AvgCostPriceText, FallbackValue=--}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="#999"/>
 
                             <TextBlock Grid.Row="6" Grid.Column="0" Text="持仓" VerticalAlignment="Center" Foreground="#666" FontSize="12"/>
-                            <TextBlock Grid.Row="6" Grid.Column="1" Text="0/1" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding PositionText, FallbackValue=0/1}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
 
                             <TextBlock Grid.Row="7" Grid.Column="0" Text="T+1冻结" VerticalAlignment="Center" Foreground="#666" FontSize="12"/>
-                            <TextBlock Grid.Row="7" Grid.Column="1" Text="0" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding FrozenText, FallbackValue=0}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
                         </Grid>
 
                         <Separator Margin="0,0,0,10"/>
@@ -321,43 +321,43 @@
                         <!-- 训练数据 -->
                         <DockPanel Margin="0,0,0,8">
                             <TextBlock Text="训练数据" FontSize="13" FontWeight="Bold"/>
-                            <TextBlock Text="剩余 150 根" FontSize="11" Foreground="#999" HorizontalAlignment="Right"/>
+                            <TextBlock Text="{Binding RemainingBars, StringFormat=剩余 {0} 根, FallbackValue=剩余 150 根}" FontSize="11" Foreground="#999" HorizontalAlignment="Right"/>
                         </DockPanel>
 
                         <UniformGrid Columns="3" Margin="0,0,0,12">
                             <Border Background="#F5F5F5" CornerRadius="4" Padding="6,5" Margin="2">
                                 <StackPanel>
-                                    <TextBlock Text="0" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding OpenCount, FallbackValue=0}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
                                     <TextBlock Text="开仓次数" FontSize="10" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
                             <Border Background="#F5F5F5" CornerRadius="4" Padding="6,5" Margin="2">
                                 <StackPanel>
-                                    <TextBlock Text="0" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding ProfitCount, FallbackValue=0}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
                                     <TextBlock Text="盈利次数" FontSize="10" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
                             <Border Background="#F5F5F5" CornerRadius="4" Padding="6,5" Margin="2">
                                 <StackPanel>
-                                    <TextBlock Text="0" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding WatchDays, FallbackValue=0}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
                                     <TextBlock Text="观望天数" FontSize="10" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
                             <Border Background="#F5F5F5" CornerRadius="4" Padding="6,5" Margin="2">
                                 <StackPanel>
-                                    <TextBlock Text="0" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding HoldDays, FallbackValue=0}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
                                     <TextBlock Text="持仓天数" FontSize="10" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
                             <Border Background="#F5F5F5" CornerRadius="4" Padding="6,5" Margin="2">
                                 <StackPanel>
-                                    <TextBlock Text="0" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding HeavyHoldDays, FallbackValue=0}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
                                     <TextBlock Text="重仓天数" FontSize="10" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
                             <Border Background="#F5F5F5" CornerRadius="4" Padding="6,5" Margin="2">
                                 <StackPanel>
-                                    <TextBlock Text="9s" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding ElapsedText, FallbackValue=0s}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
                                     <TextBlock Text="用时" FontSize="10" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
@@ -374,26 +374,27 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <Button Grid.Column="0" Margin="0,0,3,0" Height="48" Background="#E91E63" Foreground="White" BorderThickness="0" FontWeight="Bold">
+                            <Button Grid.Column="0" Margin="0,0,3,0" Height="48" Background="#E91E63" Foreground="White" BorderThickness="0" FontWeight="Bold"
+                                    Command="{Binding BuyCommand}">
                                 <StackPanel>
                                     <TextBlock Text="买入" FontSize="16"/>
-                                    <TextBlock Text="可买1/1仓" FontSize="10" Opacity="0.85" Margin="0,1,0,0"/>
+                                    <TextBlock Text="{Binding BuyBtnSubText, FallbackValue=可买1/1仓}" FontSize="10" Opacity="0.85" Margin="0,1,0,0"/>
                                     <TextBlock Text="B" FontSize="9" Opacity="0.6" Margin="0,1,0,0"/>
                                 </StackPanel>
                             </Button>
-                            <Button Grid.Column="1" Margin="3,0,0,0" Height="48" Background="#81C784" Foreground="White" BorderThickness="0" FontWeight="Bold">
+                            <Button Grid.Column="1" Margin="3,0,0,0" Height="48" Background="#81C784" Foreground="White" BorderThickness="0" FontWeight="Bold"
+                                    Command="{Binding SellCommand}">
                                 <StackPanel>
                                     <TextBlock Text="卖出" FontSize="16"/>
-                                    <TextBlock Text="无仓位可卖" FontSize="10" Opacity="0.85" Margin="0,1,0,0"/>
+                                    <TextBlock Text="{Binding SellBtnSubText, FallbackValue=无仓位可卖}" FontSize="10" Opacity="0.85" Margin="0,1,0,0"/>
                                     <TextBlock Text="M" FontSize="9" Opacity="0.6" Margin="0,1,0,0"/>
                                 </StackPanel>
                             </Button>
                         </Grid>
 
-
                         <!-- 持有/观望 -->
                         <Button Height="42" Margin="0,0,0,8" BorderThickness="0" FontWeight="Bold"
-        Command="{Binding HoldOrWatchCommand}">
+                                Command="{Binding HoldOrWatchCommand}">
                             <Button.Style>
                                 <Style TargetType="Button">
                                     <Setter Property="Background" Value="#FF4081"/>
@@ -402,9 +403,9 @@
                                         <Setter.Value>
                                             <ControlTemplate TargetType="Button">
                                                 <Border Background="{TemplateBinding Background}"
-                                BorderThickness="{TemplateBinding BorderThickness}">
+                                                        BorderThickness="{TemplateBinding BorderThickness}">
                                                     <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"/>
+                                                                      VerticalAlignment="Center"/>
                                                 </Border>
                                             </ControlTemplate>
                                         </Setter.Value>
@@ -425,6 +426,7 @@
                                 <TextBlock Text="H / Space" FontSize="10" Opacity="0.7" Margin="10,0,0,0"/>
                             </StackPanel>
                         </Button>
+
                         <!-- 自动播放 -->
                         <Grid Margin="0,0,0,12">
                             <Grid.ColumnDefinitions>
@@ -432,8 +434,8 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <Button Grid.Column="0" Content="自动播放" Width="85" Height="36"
-									Background="#4A90D9" Foreground="White"
-									FontSize="12" FontWeight="Bold" BorderThickness="0"/>
+                                    Background="#4A90D9" Foreground="White"
+                                    FontSize="12" FontWeight="Bold" BorderThickness="0"/>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                                 <Button Content="0.5x" Width="40" Height="28" Margin="2,0" Background="#F5F5F5" BorderBrush="#DDD" BorderThickness="1" FontSize="11"/>
                                 <Button Content="1x" Width="40" Height="28" Margin="2,0" Background="#E91E63" Foreground="White" BorderThickness="0" FontSize="11"/>
@@ -446,11 +448,47 @@
 
                         <!-- 操作流水 -->
                         <TextBlock Text="操作流水" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
-                        <Border Background="#F8F8F8" CornerRadius="4" Padding="15" MinHeight="50">
-                            <TextBlock Text="暂无操作" Foreground="#999" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12"/>
+
+                        <Border Background="#F8F8F8" CornerRadius="4" Padding="0" MinHeight="50">
+                            <Grid>
+                                <!-- 空数据提示 -->
+                                <TextBlock Text="暂无操作" Foreground="#999" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding TradeRecords.Count}" Value="0">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+
+                                <!-- 流水列表 -->
+                                <ItemsControl ItemsSource="{Binding TradeRecords}" Margin="8,6">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border BorderBrush="#EEE" BorderThickness="0,0,0,1" Padding="0,6">
+                                                <StackPanel>
+                                                    <DockPanel>
+                                                        <TextBlock Text="{Binding Type}" FontSize="13" FontWeight="Bold" Foreground="#333"/>
+                                                        <TextBlock Text="{Binding Date}" FontSize="11" Foreground="#999" HorizontalAlignment="Right"/>
+                                                    </DockPanel>
+                                                    <TextBlock Margin="0,2,0,0">
+                                                        <Run Text="{Binding Price, StringFormat={}{0:F2}}" FontSize="12" Foreground="#666"/>
+                                                        <Run Text=" · " Foreground="#CCC"/>
+                                                        <Run Text="{Binding Profit}" FontSize="12" FontWeight="Bold" Foreground="#E91E63"/>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Grid>
                         </Border>
 
-                        <!-- 底部留白，确保内容不被截断 -->
+                        <!-- 底部留白 -->
                         <Border Height="20"/>
 
                     </StackPanel>
@@ -458,8 +496,9 @@
 
                 <!-- 结束训练并结算 - 固定在底部 -->
                 <Button Grid.Row="1" Height="44" Margin="0,10,0,0"
-						Background="#2C3E50" Foreground="White"
-						FontSize="14" FontWeight="Bold" BorderThickness="0" Cursor="Hand">
+                        Background="#2C3E50" Foreground="White"
+                        FontSize="14" FontWeight="Bold" BorderThickness="0" Cursor="Hand"
+                        Command="{Binding SettleCommand}">
                     结束训练并结算
                 </Button>
 

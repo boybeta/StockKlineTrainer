@@ -1,5 +1,4 @@
 ﻿using ScottPlot.Plottables;
-using StockKLineTrainer.ViewModels;
 using System.Windows;
 
 namespace StockKLineTrainer
