@@ -67,7 +67,7 @@
         <Grid Grid.Column="0" Margin="10,10,5,10" Width="1040" HorizontalAlignment="Left">
             <Grid.RowDefinitions>
                 <RowDefinition Height="42"/>
-                <RowDefinition Height="58"/>
+                <RowDefinition Height="48"/>
                 <RowDefinition Height="38"/>
                 <RowDefinition Height="500"/>
                 <!-- ← 改动2：K线主图固定500px -->
@@ -90,76 +90,117 @@
 
             
             <!-- 2. 股票信息栏 -->
-            <Border Grid.Row="1" Background="White" CornerRadius="6" Margin="0,0,0,6" Padding="12,6">
+            <!-- 2. 股票信息栏 -->
+            <!-- 2. 股票信息栏 -->
+            <Border Grid.Row="1" Background="White" CornerRadius="6" Margin="0,0,0,6"
+        BorderBrush="#DDD" BorderThickness="1">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="55"/>
+                        <ColumnDefinition Width="1"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="1"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="1"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="1"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="1"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="1"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="1"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="1"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="1"/>
                         <ColumnDefinition Width="95"/>
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <!-- 第1列：状态 -->
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="12,0,0,0">
                         <TextBlock Text="进行中" FontSize="12" Foreground="#E91E63" FontWeight="Bold"/>
                         <TextBlock Text="股票" FontSize="11" Foreground="#999" Margin="0,2,0,0"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding CurrentPrice, FallbackValue=--}" FontSize="20" FontWeight="Bold" Foreground="#333"/>
-                        <TextBlock Text="现价" FontSize="11" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    <!-- 粉色分隔线 -->
+                    <Border Grid.Column="1" Background="#999" Width="1" Margin="0,0"/>
+
+                    <!-- 现价 -->
+                    <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="40,0,0,0">
+                        <TextBlock Text="{Binding CurrentPrice, FallbackValue=--}" FontSize="14" FontWeight="Bold" Foreground="#333" HorizontalAlignment="Left"/>
+                        <TextBlock Text="现价" FontSize="11" Foreground="#999" HorizontalAlignment="Left" Margin="0,2,0,0"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding PriceChange, StringFormat={}{0:F2}, FallbackValue=--}" FontSize="20" FontWeight="Bold" Foreground="{Binding PriceChangeBrush}"/>
-                        <TextBlock Text="涨跌" FontSize="11" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    <Border Grid.Column="3" Background="#999" Width="1" Margin="0,0"/>
+
+                    <!-- 涨跌 -->
+                    <StackPanel Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="40,0,0,0">
+                        <TextBlock Text="{Binding PriceChange, StringFormat={}{0:F2}, FallbackValue=--}" FontSize="14" FontWeight="Bold" Foreground="{Binding PriceChangeBrush}" HorizontalAlignment="Left"/>
+                        <TextBlock Text="涨跌" FontSize="11" Foreground="#999" HorizontalAlignment="Left" Margin="0,2,0,0"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="3" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding PriceChangePct, StringFormat={}{0:F2}, FallbackValue=--}" FontSize="20" FontWeight="Bold" Foreground="{Binding PriceChangeBrush}"/>
-                        <TextBlock Text="涨跌幅" FontSize="11" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    <Border Grid.Column="5" Background="#999" Width="1" Margin="0,0"/>
+
+                    <!-- 涨跌幅 -->
+                    <StackPanel Grid.Column="6" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="40,0,0,0">
+                        <TextBlock Text="{Binding PriceChangePct, StringFormat={}{0:F2}%, FallbackValue=--}" FontSize="14" FontWeight="Bold" Foreground="{Binding PriceChangeBrush}" HorizontalAlignment="Left"/>
+                        <TextBlock Text="涨跌幅" FontSize="11" Foreground="#999" HorizontalAlignment="Left" Margin="0,2,0,0"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="4" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding OpenPrice, FallbackValue=--}" FontSize="17" FontWeight="Bold" Foreground="#333"/>
-                        <TextBlock Text="开盘" FontSize="11" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    <Border Grid.Column="7" Background="#999" Width="1" Margin="0,0"/>
+
+                    <!-- 开盘 -->
+                    <StackPanel Grid.Column="8" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="40,0,0,0">
+                        <TextBlock Text="{Binding OpenPrice, FallbackValue=--}" FontSize="14" FontWeight="Bold" Foreground="#333" HorizontalAlignment="Left"/>
+                        <TextBlock Text="开盘" FontSize="11" Foreground="#999" HorizontalAlignment="Left" Margin="0,2,0,0"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="5" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding HighPrice, FallbackValue=--}" FontSize="17" FontWeight="Bold" Foreground="#333"/>
-                        <TextBlock Text="最高" FontSize="11" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    <Border Grid.Column="9" Background="#999" Width="1" Margin="0,0"/>
+
+                    <!-- 最高 -->
+                    <StackPanel Grid.Column="10" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="40,0,0,0">
+                        <TextBlock Text="{Binding HighPrice, FallbackValue=--}" FontSize="14" FontWeight="Bold" Foreground="#333" HorizontalAlignment="Left"/>
+                        <TextBlock Text="最高" FontSize="11" Foreground="#999" HorizontalAlignment="Left" Margin="0,2,0,0"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="6" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding LowPrice, FallbackValue=--}" FontSize="17" FontWeight="Bold" Foreground="#333"/>
-                        <TextBlock Text="最低" FontSize="11" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    <Border Grid.Column="11" Background="#999" Width="1" Margin="0,0"/>
+
+                    <!-- 最低 -->
+                    <StackPanel Grid.Column="12" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="40,0,0,0">
+                        <TextBlock Text="{Binding LowPrice, FallbackValue=--}" FontSize="14" FontWeight="Bold" Foreground="#333" HorizontalAlignment="Left"/>
+                        <TextBlock Text="最低" FontSize="11" Foreground="#999" HorizontalAlignment="Left" Margin="0,2,0,0"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="7" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding VolumeRatio, FallbackValue=--}" FontSize="17" FontWeight="Bold" Foreground="#333"/>
-                        <TextBlock Text="量比" FontSize="11" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    <Border Grid.Column="13" Background="#999" Width="1" Margin="0,0"/>
+
+                    <!-- 量比 -->
+                    <StackPanel Grid.Column="14" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="40,0,0,0">
+                        <TextBlock Text="0.52" FontSize="14" FontWeight="Bold" Foreground="#333" HorizontalAlignment="Left"/>
+                        <TextBlock Text="量比" FontSize="11" Foreground="#999" HorizontalAlignment="Left" Margin="0,2,0,0"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="8" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding TurnoverRate, FallbackValue=--}" FontSize="17" FontWeight="Bold" Foreground="#333"/>
-                        <TextBlock Text="换手" FontSize="11" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    <Border Grid.Column="15" Background="#999" Width="1" Margin="0,0"/>
+
+                    <!-- 换手 -->
+                    <StackPanel Grid.Column="16" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="40,0,0,0">
+                        <TextBlock Text="2.0" FontSize="14" FontWeight="Bold" Foreground="#333" HorizontalAlignment="Left"/>
+                        <TextBlock Text="换手" FontSize="11" Foreground="#999" HorizontalAlignment="Left" Margin="0,2,0,0"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="9" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding CurrentDate, FallbackValue=xxxx-xx-xx}" FontSize="17" FontWeight="Bold" Foreground="#333"/>
-                        <TextBlock Text="日期" FontSize="11" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    <Border Grid.Column="17" Background="#999" Width="1" Margin="0,0"/>
+
+                    <!-- 日期 -->
+                    <StackPanel Grid.Column="18" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="10,0,0,0">
+                        <TextBlock Text="xxxx-xx" FontSize="13" FontWeight="Bold" Foreground="#333" HorizontalAlignment="Left"/>
+                        <TextBlock Text="日期" FontSize="11" Foreground="#999" HorizontalAlignment="Left" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Grid>
             </Border>
 
             <!-- 3. 周期切换 -->
-            <Border Grid.Row="2" Background="White" CornerRadius="6" Margin="0,0,0,6" Padding="5">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Border Grid.Row="2" Background="White" CornerRadius="6" Margin="0,0,0,6" Padding="0,0,0,0">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <Button Content="日" Style="{StaticResource PeriodBtnActive}"/>
                     <Button Content="周" Style="{StaticResource PeriodBtn}"/>
                     <Button Content="月" Style="{StaticResource PeriodBtn}"/>
@@ -178,7 +219,8 @@
             <!-- 4. K线主图 -->
             <!-- ← 改动5：去掉底部Margin，与VOL紧密相连 -->
             <!-- 4. K线主图 -->
-            <Border Grid.Row="3" Background="White" CornerRadius="6" Margin="0,0,0,0">
+            <Border Grid.Row="3" Background="White" CornerRadius="6" Margin="0,0,0,0"
+        BorderBrush="#DDD" BorderThickness="1">
                 <Grid>
                     <!-- 左上角指标文字（浮在K线图内部左上角） -->
                     <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,26" Panel.ZIndex="1">
@@ -224,7 +266,8 @@
 
             <!-- 5. VOL副图 -->
             <!-- ← 改动7：去掉底部Margin，与MACD紧密相连 -->
-            <Border Grid.Row="4" Background="White" CornerRadius="6" Margin="0,0,0,0">
+            <Border Grid.Row="4" Background="White" CornerRadius="6" Margin="0,0,0,0"
+        BorderBrush="#DDD" BorderThickness="1">
                 <Grid>
                     <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,4" Panel.ZIndex="1">
                         <TextBlock FontSize="11">
@@ -245,7 +288,8 @@
             </Border>
 
             <!-- 6. MACD副图 -->
-            <Border Grid.Row="5" Background="White" CornerRadius="6">
+            <Border Grid.Row="5" Background="White" CornerRadius="6"
+        BorderBrush="#DDD" BorderThickness="1">
                 <!-- ← 改动9：简化内部Grid，去掉无意义的ColumnDefinitions，统一左边距 -->
                 <Grid>
                     <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,4" Panel.ZIndex="1">

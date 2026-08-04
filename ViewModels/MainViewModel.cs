@@ -447,7 +447,7 @@ namespace StockKLineTrainer
             Debug.WriteLine($"[DIAG] Candlestick added, Sequential={candlestick.Sequential}");
 
             candlestick.Sequential = true;
-            candlestick.SymbolWidth = 0.85f;
+            candlestick.SymbolWidth = 0.8f;
             candlestick.RisingColor = SPColor.FromHex("#FF3232");
             candlestick.FallingColor = SPColor.FromHex("#00A800");
 
@@ -455,6 +455,7 @@ namespace StockKLineTrainer
             KlinePlot.Plot.Legend.IsVisible = false;
 
             // ===== 价格轴移到右侧，隐藏左侧 =====
+            KlinePlot.Plot.Axes.Top.IsVisible = false;
             KlinePlot.Plot.Axes.Left.IsVisible = false;
             KlinePlot.Plot.Axes.Left.MinimumSize = 0;
             KlinePlot.Plot.Axes.Right.IsVisible = true;
@@ -644,9 +645,11 @@ namespace StockKLineTrainer
                 {
                     Position = dataIndex,
                     Value = dataList[dataIndex].Volume,
+                    Size = 0.5f,
                     FillColor = isRising
-                        ? SPColor.FromHex("#FF3232")
-                        : SPColor.FromHex("#00A800")
+        ? SPColor.FromHex("#e04555")
+        : SPColor.FromHex("#1f9d72"),
+                    LineWidth = 0  // ← 显式去掉边框
                 });
             }
 
@@ -672,9 +675,9 @@ namespace StockKLineTrainer
                 line10.LineWidth = 1;
                 line10.MarkerSize = 0;
             }
-
+            VolPlot.Plot.Axes.Top.IsVisible = false;
             VolPlot.Plot.Axes.Left.IsVisible = false;
-            VolPlot.Plot.Axes.Right.IsVisible = true;
+            VolPlot.Plot.Axes.Right.IsVisible = false;
             VolPlot.Plot.Axes.Right.Label.Text = "";
             VolPlot.Plot.Axes.Bottom.IsVisible = false;
 
@@ -691,7 +694,7 @@ namespace StockKLineTrainer
             VolPlot.Plot.Grid.MajorLineColor = SPColor.FromHex("#F0F0F0");
             VolPlot.Plot.Grid.MajorLineWidth = 0.5f;
 
-            VolPlot.Plot.Axes.Left.MinimumSize = 50;
+            VolPlot.Plot.Axes.Left.MinimumSize = 0;
             VolPlot.Plot.Axes.Right.MinimumSize = 50;
 
             VolPlot.Refresh();
@@ -731,26 +734,63 @@ namespace StockKLineTrainer
 
             MacdPlot.Plot.Clear();
 
+            MacdPlot.Plot.Legend.IsVisible = false;
+
+            var transparent = new SPColor(0, 0, 0, 0);
             var macdBars = new List<ScottPlot.Bar>();
+
             for (int i = 0; i < macd.Length && i < visibleCount; i++)
             {
-                macdBars.Add(new ScottPlot.Bar
+                bool isRising = i == 0 || Math.Abs(macd[i]) > Math.Abs(macd[i - 1]);
+
+                var bar = new ScottPlot.Bar
                 {
                     Position = windowStart + i,
                     Value = macd[i],
-                    FillColor = macd[i] >= 0
-                        ? SPColor.FromHex("#FF3232")
-                        : SPColor.FromHex("#00A800")
-                });
+                    Size = 0.5f,
+                    LineWidth = 1.2f
+                };
+
+                if (macd[i] >= 0)
+                {
+                    if (isRising)
+                    {
+                        bar.FillColor = transparent;
+                        bar.LineColor = SPColor.FromHex("#FF3232");
+                    }
+                    else
+                    {
+                        bar.FillColor = SPColor.FromHex("#FF3232");
+                        bar.LineColor = SPColor.FromHex("#FF3232");
+                    }
+                }
+                else
+                {
+                    if (isRising)
+                    {
+                        bar.FillColor = transparent;
+                        bar.LineColor = SPColor.FromHex("#00A800");
+                    }
+                    else
+                    {
+                        bar.FillColor = SPColor.FromHex("#00A800");
+                        bar.LineColor = SPColor.FromHex("#00A800");
+                    }
+                }
+
+                macdBars.Add(bar);
             }
+
             MacdPlot.Plot.Add.Bars(macdBars);
 
             PlotMacdLine(xs, dif, "#FFD700", "DIF");
             PlotMacdLine(xs, dea, "#00BFFF", "DEA");
 
+            MacdPlot.Plot.Axes.Top.IsVisible = false;
             MacdPlot.Plot.Axes.Left.IsVisible = false;
-            MacdPlot.Plot.Axes.Right.IsVisible = true;
+            MacdPlot.Plot.Axes.Right.IsVisible = false;
             MacdPlot.Plot.Axes.Right.Label.Text = "";
+            MacdPlot.Plot.Axes.Bottom.IsVisible = false;
 
             SetupDateAxis(MacdPlot.Plot, dataList, windowStart, visibleCount);
 
@@ -778,7 +818,7 @@ namespace StockKLineTrainer
             MacdPlot.Plot.Grid.MajorLineColor = SPColor.FromHex("#F0F0F0");
             MacdPlot.Plot.Grid.MajorLineWidth = 0.5f;
 
-            MacdPlot.Plot.Axes.Left.MinimumSize = 50;
+            MacdPlot.Plot.Axes.Left.MinimumSize = 0;
             MacdPlot.Plot.Axes.Right.MinimumSize = 50;
 
             MacdPlot.Refresh();
