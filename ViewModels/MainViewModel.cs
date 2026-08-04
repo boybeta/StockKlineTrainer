@@ -43,6 +43,8 @@ namespace StockKLineTrainer
         private ScottPlot.Plottables.VerticalLine? _volVLine;
         private ScottPlot.Plottables.VerticalLine? _macdVLine;
 
+        private ScottPlot.Plottables.Text? _priceLabel;
+
         // ===== 训练开始标记线 =====
         private double _startMarkerIndex = -1;
 
@@ -50,13 +52,23 @@ namespace StockKLineTrainer
         private const double DefaultInitialFirecrackers = 10000;
         private double _initialFirecrackers = DefaultInitialFirecrackers;
         private const double FeeRate = 0.0003;
-        private double _cash;   // ← 只声明，不赋值
+        private double _cash;
         private double _holdBuyAmount = 0;
         private double? _avgCostPrice = null;
         private int _buyBarIndex = -1;
         private bool _hasPosition => _holdBuyAmount > 0;
+
         // ===== 预筛选缓存 =====
         private List<string> _validStockList = new();
+
+        // ===== 交易标记 B/S =====
+        private readonly List<TradeMarker> _tradeMarkers = new();
+
+        private class TradeMarker
+        {
+            public int BarIndex { get; set; }
+            public string Type { get; set; } = "";
+        }
 
         // ===== 训练统计 =====
         private int _openCount = 0;
@@ -74,6 +86,83 @@ namespace StockKLineTrainer
 
         // ===== 操作流水 =====
         public ObservableCollection<TradeRecord> TradeRecords { get; } = new();
+
+        // ===== 顶部信息栏绑定属性 =====
+        private double _currentPrice;
+        public double CurrentPrice { get => _currentPrice; set { _currentPrice = value; OnPropertyChanged(); } }
+
+        private double _priceChange;
+        public double PriceChange { get => _priceChange; set { _priceChange = value; OnPropertyChanged(); } }
+
+        private double _priceChangePct;
+        public double PriceChangePct { get => _priceChangePct; set { _priceChangePct = value; OnPropertyChanged(); } }
+
+        private Brush _priceChangeBrush = new SolidColorBrush(System.Windows.Media.Colors.Gray);
+        public Brush PriceChangeBrush { get => _priceChangeBrush; set { _priceChangeBrush = value; OnPropertyChanged(); } }
+
+        private double _openPrice;
+        public double OpenPrice { get => _openPrice; set { _openPrice = value; OnPropertyChanged(); } }
+
+        private double _highPrice;
+        public double HighPrice { get => _highPrice; set { _highPrice = value; OnPropertyChanged(); } }
+
+        private double _lowPrice;
+        public double LowPrice { get => _lowPrice; set { _lowPrice = value; OnPropertyChanged(); } }
+
+        private string _volumeRatio = "--";
+        public string VolumeRatio { get => _volumeRatio; set { _volumeRatio = value; OnPropertyChanged(); } }
+
+        private string _turnoverRate = "--";
+        public string TurnoverRate { get => _turnoverRate; set { _turnoverRate = value; OnPropertyChanged(); } }
+
+        private string _currentDate = "xxxx-xx-xx";
+        public string CurrentDate { get => _currentDate; set { _currentDate = value; OnPropertyChanged(); } }
+
+        // ===== 指标数值绑定属性 =====
+        private string _ma5Value = "--";
+        public string MA5Value { get => _ma5Value; set { _ma5Value = value; OnPropertyChanged(); } }
+
+        private string _ma10Value = "--";
+        public string MA10Value { get => _ma10Value; set { _ma10Value = value; OnPropertyChanged(); } }
+
+        private string _ma20Value = "--";
+        public string MA20Value { get => _ma20Value; set { _ma20Value = value; OnPropertyChanged(); } }
+
+        private string _ema5Value = "--";
+        public string EMA5Value { get => _ema5Value; set { _ema5Value = value; OnPropertyChanged(); } }
+
+        private string _ema10Value = "--";
+        public string EMA10Value { get => _ema10Value; set { _ema10Value = value; OnPropertyChanged(); } }
+
+        private string _ema20Value = "--";
+        public string EMA20Value { get => _ema20Value; set { _ema20Value = value; OnPropertyChanged(); } }
+
+        private string _bollUpValue = "--";
+        public string BollUpValue { get => _bollUpValue; set { _bollUpValue = value; OnPropertyChanged(); } }
+
+        private string _bollMidValue = "--";
+        public string BollMidValue { get => _bollMidValue; set { _bollMidValue = value; OnPropertyChanged(); } }
+
+        private string _bollDnValue = "--";
+        public string BollDnValue { get => _bollDnValue; set { _bollDnValue = value; OnPropertyChanged(); } }
+
+        private string _volMA5Value = "--";
+        public string VolMA5Value { get => _volMA5Value; set { _volMA5Value = value; OnPropertyChanged(); } }
+
+        private string _volMA10Value = "--";
+        public string VolMA10Value { get => _volMA10Value; set { _volMA10Value = value; OnPropertyChanged(); } }
+
+        private string _volumeValue = "--";
+        public string VolumeValue { get => _volumeValue; set { _volumeValue = value; OnPropertyChanged(); } }
+
+        private string _difValue = "--";
+        public string DIFValue { get => _difValue; set { _difValue = value; OnPropertyChanged(); } }
+
+        private string _deaValue = "--";
+        public string DEAValue { get => _deaValue; set { _deaValue = value; OnPropertyChanged(); } }
+
+        private string _macdValue = "--";
+        public string MACDValue { get => _macdValue; set { _macdValue = value; OnPropertyChanged(); } }
 
         private string? _selectedStock;
         public string? SelectedStock
@@ -173,14 +262,14 @@ namespace StockKLineTrainer
             }
         }
 
-        // ===== 开仓收益：当前持仓这笔交易的盈亏金额 =====
+        // ===== 开仓收益 =====
         public double OpenProfitAmount => _hasPosition ? CurrentMarketValue - _holdBuyAmount : 0;
 
         public double OpenProfitPct => _hasPosition && _holdBuyAmount > 0
             ? (CurrentMarketValue - _holdBuyAmount) / _holdBuyAmount * 100
             : 0;
 
-        // ===== 本局收益：累计总盈亏（总资产 - 初始资金）=====
+        // ===== 本局收益 =====
         public double TotalProfitAmount => TotalFirecrackers - _initialFirecrackers;
         public double TotalProfitPct => _initialFirecrackers > 0
             ? (TotalFirecrackers - _initialFirecrackers) / _initialFirecrackers * 100
@@ -218,7 +307,6 @@ namespace StockKLineTrainer
 
             _isInitializing = false;
 
-            // 启动时随机加载一只股票 + 随机时间点
             if (StockList.Count > 0)
             {
                 LoadRandomStock();
@@ -231,7 +319,6 @@ namespace StockKLineTrainer
             StockList.Clear();
             foreach (var s in stocks) StockList.Add(s);
 
-            // 预筛选：只保留数据 >= 270 根的股票，启动时筛一次，之后直接用
             _validStockList = stocks.Where(code =>
             {
                 var data = _dbService.GetStockData(code, startDate: "19900101", endDate: "20251231", limit: 10000);
@@ -252,7 +339,6 @@ namespace StockKLineTrainer
                 return;
             }
 
-            // 从"数据够长的"股票里随机抽，保证100%命中
             string newStock;
             if (_validStockList.Count == 1)
             {
@@ -263,12 +349,11 @@ namespace StockKLineTrainer
                 do
                 {
                     newStock = _validStockList[_random.Next(_validStockList.Count)];
-                } while (newStock == _selectedStock);   // 尽量不和当前重复
+                } while (newStock == _selectedStock);
             }
 
             var allData = _dbService.GetStockData(newStock, startDate: "19900101", endDate: "20251231", limit: 10000);
 
-            // 保险判断（理论上预筛选后一定够）
             if (allData.Count < _totalBars)
             {
                 MessageBox.Show($"股票 {newStock} 数据不足 {_totalBars} 根");
@@ -362,24 +447,51 @@ namespace StockKLineTrainer
             Debug.WriteLine($"[DIAG] Candlestick added, Sequential={candlestick.Sequential}");
 
             candlestick.Sequential = true;
-            candlestick.SymbolWidth = 0.7;
+            candlestick.SymbolWidth = 0.85f;
             candlestick.RisingColor = SPColor.FromHex("#FF3232");
             candlestick.FallingColor = SPColor.FromHex("#00A800");
 
             AddMALines(dataList, windowStart, visibleCount);
             KlinePlot.Plot.Legend.IsVisible = false;
-            KlinePlot.Plot.Axes.Left.Label.Text = "价格";
-            KlinePlot.Plot.Axes.Bottom.Label.Text = "";
+
+            // ===== 价格轴移到右侧，隐藏左侧 =====
+            KlinePlot.Plot.Axes.Left.IsVisible = false;
+            KlinePlot.Plot.Axes.Left.MinimumSize = 0;
+            KlinePlot.Plot.Axes.Right.IsVisible = true;
+            KlinePlot.Plot.Axes.Right.MinimumSize = 50;
+            KlinePlot.Plot.Axes.Right.Label.Text = "";
+
+            // ===== 去掉底部日期轴（由MACD统一显示） =====
+            KlinePlot.Plot.Axes.Bottom.IsVisible = false;
             KlinePlot.Plot.Grid.XAxisStyle.IsVisible = false;
 
-            SetupDateAxis(KlinePlot.Plot, dataList, windowStart, visibleCount);
+            // ===== Y轴边距压缩：只留5%边距 =====
+                        // ===== Y轴边距压缩：只留5%边距 =====
+            var visibleData = dataList.Skip(windowStart).Take(visibleCount).ToList();
+            if (visibleData.Count > 0)
+            {
+                double yMin = visibleData.Min(d => d.Low);
+                double yMax = visibleData.Max(d => d.High);
+                double range = yMax - yMin;
+                if (range <= 0) range = yMax * 0.01;
+                double padding = range * 0.05;
+                
+                // 设置 Left 轴（Plottables 绑定的默认轴）
+                KlinePlot.Plot.Axes.SetLimitsY(yMin - padding, yMax + padding);
+                
+                // ★ 关键：把数据范围同步给 Right 轴，右侧才会显示价格刻度
+                KlinePlot.Plot.Axes.Right.Min = yMin - padding;
+                KlinePlot.Plot.Axes.Right.Max = yMax + padding;
+            }
 
             Debug.WriteLine($"[DIAG] Before SetLimitsX: XRange={KlinePlot.Plot.Axes.GetLimits().XRange}");
             KlinePlot.Plot.Axes.SetLimitsX(windowStart - 0.5, windowEnd - 0.5);
-            KlinePlot.Plot.Axes.AutoScaleY();
+
+            Debug.WriteLine($"[DIAG] Before SetLimitsX: XRange={KlinePlot.Plot.Axes.GetLimits().XRange}");
+            KlinePlot.Plot.Axes.SetLimitsX(windowStart - 0.5, windowEnd - 0.5);
             Debug.WriteLine($"[DIAG] After SetLimitsX: XRange={KlinePlot.Plot.Axes.GetLimits().XRange}, YRange={KlinePlot.Plot.Axes.GetLimits().YRange}");
 
-            // ===== 十字光标：竖直 + 水平虚线 =====
+            // ===== 十字光标 =====
             _klineVLine = KlinePlot.Plot.Add.VerticalLine(0);
             _klineVLine.Color = SPColor.FromHex("#000000");
             _klineVLine.LineWidth = 0.5f;
@@ -392,15 +504,22 @@ namespace StockKLineTrainer
             _klineHLine.LinePattern = new LinePattern(new float[] { 2, 1 }, 0, "Custom");
             _klineHLine.IsVisible = false;
 
+            // ===== 右侧Y轴跟随价格标签（蓝色背景） =====
+            _priceLabel = KlinePlot.Plot.Add.Text("", new Coordinates(0, 0));
+            _priceLabel.LabelStyle.FontSize = 11;
+            _priceLabel.LabelStyle.Bold = true;
+            _priceLabel.LabelStyle.ForeColor = SPColor.FromHex("#FFFFFF");
+            _priceLabel.LabelStyle.BackgroundColor = SPColor.FromHex("#2196F3");
+            _priceLabel.LabelStyle.BorderColor = SPColor.FromHex("#2196F3");
+            _priceLabel.LabelStyle.BorderWidth = 1;
+            _priceLabel.LabelStyle.Alignment = Alignment.MiddleRight; // 坐标点在标签右侧，文字向左展开
+            _priceLabel.IsVisible = false;
+
             // 优化网格线
             KlinePlot.Plot.Grid.MajorLineColor = SPColor.FromHex("#F0F0F0");
             KlinePlot.Plot.Grid.MajorLineWidth = 0.5f;
 
-            // 统一左右边距
-            KlinePlot.Plot.Axes.Left.MinimumSize = 50;
-            KlinePlot.Plot.Axes.Right.MinimumSize = 50;
-
-            // ===== 训练开始标记线（蓝色竖虚线）=====
+            // ===== 训练开始标记线（蓝色竖虚线） =====
             if (_isTrainingMode && _startMarkerIndex >= 0)
             {
                 var marker = KlinePlot.Plot.Add.VerticalLine(_startMarkerIndex);
@@ -409,8 +528,53 @@ namespace StockKLineTrainer
                 marker.LinePattern = LinePattern.Dashed;
             }
 
+            // ===== 绘制 B/S 标记和"开始"标签 =====
+            DrawTradeMarkers(dataList, windowStart, windowEnd);
+
             KlinePlot.Refresh();
             Debug.WriteLine("[DIAG] Refresh called");
+        }
+
+        private void DrawTradeMarkers(List<StockData> dataList, int windowStart, int windowEnd)
+        {
+            // 绘制 B/S 标记
+            foreach (var marker in _tradeMarkers)
+            {
+                if (marker.BarIndex < windowStart || marker.BarIndex >= windowEnd) continue;
+
+                var d = dataList[marker.BarIndex];
+                double x = marker.BarIndex;
+                double y = d.High * 1.015;
+
+                var txt = KlinePlot!.Plot.Add.Text(marker.Type, new Coordinates(x, y));
+                txt.LabelStyle.FontSize = 10;
+                txt.LabelStyle.Bold = true;
+                txt.LabelStyle.ForeColor = SPColor.FromHex("#FFFFFF");
+                txt.LabelStyle.BackgroundColor = marker.Type == "B"
+                    ? SPColor.FromHex("#FF3232")
+                    : SPColor.FromHex("#2196F3");
+                txt.LabelStyle.BorderColor = txt.LabelStyle.BackgroundColor;
+                txt.LabelStyle.BorderWidth = 1;
+                txt.LabelStyle.Alignment = Alignment.LowerCenter;
+            }
+
+            // 绘制"开始"标签
+            if (_isTrainingMode && _startMarkerIndex >= 0)
+            {
+                int startIdx = (int)Math.Floor(_startMarkerIndex);
+                if (startIdx >= windowStart && startIdx < windowEnd && startIdx < dataList.Count)
+                {
+                    double startY = dataList[startIdx].High * 1.05;
+                    var startTxt = KlinePlot!.Plot.Add.Text("开始", new Coordinates(_startMarkerIndex, startY));
+                    startTxt.LabelStyle.FontSize = 10;
+                    startTxt.LabelStyle.Bold = true;
+                    startTxt.LabelStyle.ForeColor = SPColor.FromHex("#FFFFFF");
+                    startTxt.LabelStyle.BackgroundColor = SPColor.FromHex("#2196F3");
+                    startTxt.LabelStyle.BorderColor = SPColor.FromHex("#2196F3");
+                    startTxt.LabelStyle.BorderWidth = 1;
+                    startTxt.LabelStyle.Alignment = Alignment.LowerCenter;
+                }
+            }
         }
 
         private void AddMALines(List<StockData> dataList, int windowStart, int count)
@@ -697,6 +861,39 @@ namespace StockKLineTrainer
             double change = last.Close - prev.Close;
             double changePct = prev.Close != 0 ? (change / prev.Close) * 100 : 0;
 
+            // 顶部信息栏
+            CurrentPrice = last.Close;
+            PriceChange = change;
+            PriceChangePct = changePct;
+            PriceChangeBrush = GetProfitBrush(change);
+            OpenPrice = last.Open;
+            HighPrice = last.High;
+            LowPrice = last.Low;
+            TurnoverRate = "--"; // ← 如果数据库有换手率字段，把这里改成对应的属性名
+            VolumeRatio = "--";
+            CurrentDate = last.Date.ToString("yyyy-MM-dd");
+
+            // 指标数值（取最后一根可见K线的值）
+            MA5Value = last.MA5.HasValue ? last.MA5.Value.ToString("F2") : "--";
+            MA10Value = last.MA10.HasValue ? last.MA10.Value.ToString("F2") : "--";
+            MA20Value = last.MA20.HasValue ? last.MA20.Value.ToString("F2") : "--";
+
+            EMA5Value = last.EMA5.HasValue ? last.EMA5.Value.ToString("F2") : "--";
+            EMA10Value = last.EMA10.HasValue ? last.EMA10.Value.ToString("F2") : "--";
+            EMA20Value = last.EMA20.HasValue ? last.EMA20.Value.ToString("F2") : "--";
+
+            BollUpValue = last.BollUp.HasValue ? last.BollUp.Value.ToString("F2") : "--";
+            BollMidValue = last.BollMid.HasValue ? last.BollMid.Value.ToString("F2") : "--";
+            BollDnValue = last.BollDn.HasValue ? last.BollDn.Value.ToString("F2") : "--";
+
+            VolMA5Value = last.VolMA5.HasValue ? (last.VolMA5.Value / 1_000_000).ToString("F3") + "M" : "--";
+            VolMA10Value = last.VolMA10.HasValue ? (last.VolMA10.Value / 1_000_000).ToString("F3") + "M" : "--";
+            VolumeValue = (last.Volume / 1_000_000).ToString("F3") + "M";
+
+            DIFValue = last.DIF.HasValue ? last.DIF.Value.ToString("F4") : "--";
+            DEAValue = last.DEA.HasValue ? last.DEA.Value.ToString("F4") : "--";
+            MACDValue = last.MACDHist.HasValue ? last.MACDHist.Value.ToString("F4") : "--";
+
             InfoText = $"{SelectedStock}  {last.Date:yyyy-MM-dd}  " +
                        $"开:{last.Open:F2} 高:{last.High:F2} 低:{last.Low:F2} 收:{last.Close:F2}  " +
                        $"涨跌:{change:F2} ({changePct:F2}%)  量:{last.Volume:N0}";
@@ -766,8 +963,6 @@ namespace StockKLineTrainer
         {
             if (_isAnswerRevealed) return;
 
-            bool wasTraining = _isTrainingMode;
-
             if (!_isTrainingMode)
             {
                 _isTrainingMode = true;
@@ -818,7 +1013,6 @@ namespace StockKLineTrainer
             }
         }
 
-        // ===== 买入 =====
         private bool CanBuy() => _isTrainingMode && !_isAnswerRevealed && !_hasPosition && _currentVisibleBars < _totalBars;
 
         private void ExecuteBuy()
@@ -836,6 +1030,7 @@ namespace StockKLineTrainer
             _buyBarIndex = _currentVisibleBars;
             _cash = 0;
             _openCount++;
+            _tradeMarkers.Add(new TradeMarker { BarIndex = _currentVisibleBars - 1, Type = "B" });
 
             TradeRecords.Insert(0, new TradeRecord
             {
@@ -849,7 +1044,6 @@ namespace StockKLineTrainer
             CommandManager.InvalidateRequerySuggested();
         }
 
-        // ===== 卖出 =====
         private bool CanSell() => _isTrainingMode && !_isAnswerRevealed && _hasPosition && _currentVisibleBars > _buyBarIndex + 1;
 
         private void ExecuteSell()
@@ -866,6 +1060,7 @@ namespace StockKLineTrainer
             double profitPct = (price - _avgCostPrice.Value) / _avgCostPrice.Value * 100;
 
             _cash = netCash;
+            _tradeMarkers.Add(new TradeMarker { BarIndex = _currentVisibleBars - 1, Type = "S" });
             _closedProfitAmount += profit;
             _closedCostAmount += _holdBuyAmount;
 
@@ -887,7 +1082,6 @@ namespace StockKLineTrainer
             CommandManager.InvalidateRequerySuggested();
         }
 
-        // ===== 结算 =====
         private void ExecuteSettle()
         {
             if (_hasPosition)
@@ -924,14 +1118,11 @@ namespace StockKLineTrainer
             UpdateMacdChart();
             NotifyAllStats();
             CommandManager.InvalidateRequerySuggested();
-            // 弹出训练结果
 
             _initialFirecrackers = TotalFirecrackers;
             ShowTrainingResult();
-            
         }
 
-        // ===== 辅助方法 =====
         private double GetCurrentPrice()
         {
             if (_currentDataList == null || _currentDataList.Count == 0) return 0;
@@ -985,6 +1176,7 @@ namespace StockKLineTrainer
             _closedCostAmount = 0;
             _elapsed = TimeSpan.Zero;
             TradeRecords.Clear();
+            _tradeMarkers.Clear();
             NotifyAllStats();
         }
 
@@ -993,15 +1185,12 @@ namespace StockKLineTrainer
             OnPropertyChanged(nameof(TotalFirecrackers));
             OnPropertyChanged(nameof(UsedFirecrackers));
             OnPropertyChanged(nameof(UnusedFirecrackers));
-
-            // 新的收益属性
             OnPropertyChanged(nameof(OpenProfitAmount));
             OnPropertyChanged(nameof(OpenProfitPct));
             OnPropertyChanged(nameof(TotalProfitAmount));
             OnPropertyChanged(nameof(TotalProfitPct));
             OnPropertyChanged(nameof(OpenProfitBrush));
             OnPropertyChanged(nameof(TotalProfitBrush));
-
             OnPropertyChanged(nameof(AvgCostPriceText));
             OnPropertyChanged(nameof(PositionText));
             OnPropertyChanged(nameof(FrozenText));
@@ -1079,10 +1268,20 @@ namespace StockKLineTrainer
             {
                 _klineHLine.Y = mouseCoords.Y;
                 _klineHLine.IsVisible = true;
+
+                // 更新右侧Y轴价格标签
+                if (_priceLabel != null)
+                {
+                    var xRange = KlinePlot.Plot.Axes.GetLimits().XRange;
+                    _priceLabel.Location = new Coordinates(xRange.Max, mouseCoords.Y);
+                    _priceLabel.LabelText = mouseCoords.Y.ToString("F2");
+                    _priceLabel.IsVisible = true;
+                }
             }
             else if (_klineHLine != null)
             {
                 _klineHLine.IsVisible = false;
+                if (_priceLabel != null) _priceLabel.IsVisible = false;
             }
 
             KlinePlot?.Refresh();
@@ -1096,7 +1295,7 @@ namespace StockKLineTrainer
             if (_klineHLine != null) _klineHLine.IsVisible = false;
             if (_volVLine != null) _volVLine.IsVisible = false;
             if (_macdVLine != null) _macdVLine.IsVisible = false;
-
+            if (_priceLabel != null) _priceLabel.IsVisible = false;
             KlinePlot?.Refresh();
             VolPlot?.Refresh();
             MacdPlot?.Refresh();
@@ -1219,7 +1418,7 @@ namespace StockKLineTrainer
                 Owner = Application.Current.MainWindow
             };
 
-            dialog.ShowDialog();  // ← 去掉 if 判断，直接弹窗
+            dialog.ShowDialog();
 
             switch (dialog.ResultAction)
             {
@@ -1230,10 +1429,8 @@ namespace StockKLineTrainer
                     ExitTraining();
                     break;
                 case ResultAction.Review:
-                    // 保持当前状态，答案已揭示
                     break;
             }
-        
         }
 
         private void NextGame()

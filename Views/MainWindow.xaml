@@ -63,14 +63,18 @@
         </Grid.ColumnDefinitions>
 
         <!-- ==================== 左侧主区域 ==================== -->
-        <Grid Grid.Column="0" Margin="10,10,5,10">
+        <!-- ← 改动1：固定宽度1050，左对齐 -->
+        <Grid Grid.Column="0" Margin="10,10,5,10" Width="1040" HorizontalAlignment="Left">
             <Grid.RowDefinitions>
                 <RowDefinition Height="42"/>
                 <RowDefinition Height="58"/>
                 <RowDefinition Height="38"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="105"/>
-                <RowDefinition Height="105"/>
+                <RowDefinition Height="500"/>
+                <!-- ← 改动2：K线主图固定500px -->
+                <RowDefinition Height="100"/>
+                <!-- ← 改动3：VOL固定100px -->
+                <RowDefinition Height="100"/>
+                <!-- ← 改动4：MACD固定100px -->
             </Grid.RowDefinitions>
 
             <!-- 1. 标题栏 -->
@@ -84,19 +88,20 @@
                 </DockPanel>
             </Border>
 
+            
             <!-- 2. 股票信息栏 -->
             <Border Grid.Row="1" Background="White" CornerRadius="6" Margin="0,0,0,6" Padding="12,6">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="55"/>
-                        <ColumnDefinition Width="75"/>
-                        <ColumnDefinition Width="75"/>
-                        <ColumnDefinition Width="75"/>
-                        <ColumnDefinition Width="75"/>
-                        <ColumnDefinition Width="75"/>
-                        <ColumnDefinition Width="75"/>
-                        <ColumnDefinition Width="75"/>
-                        <ColumnDefinition Width="75"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="95"/>
                     </Grid.ColumnDefinitions>
 
@@ -111,12 +116,12 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding PriceChange, FallbackValue=--}" FontSize="20" FontWeight="Bold" Foreground="{Binding PriceChangeBrush}"/>
+                        <TextBlock Text="{Binding PriceChange, StringFormat={}{0:F2}, FallbackValue=--}" FontSize="20" FontWeight="Bold" Foreground="{Binding PriceChangeBrush}"/>
                         <TextBlock Text="涨跌" FontSize="11" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="3" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding PriceChangePct, FallbackValue=--}" FontSize="20" FontWeight="Bold" Foreground="{Binding PriceChangeBrush}"/>
+                        <TextBlock Text="{Binding PriceChangePct, StringFormat={}{0:F2}, FallbackValue=--}" FontSize="20" FontWeight="Bold" Foreground="{Binding PriceChangeBrush}"/>
                         <TextBlock Text="涨跌幅" FontSize="11" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
 
@@ -171,52 +176,55 @@
             </Border>
 
             <!-- 4. K线主图 -->
-            <Border Grid.Row="3" Background="White" CornerRadius="6" Margin="0,0,0,6">
+            <!-- ← 改动5：去掉底部Margin，与VOL紧密相连 -->
+            <!-- 4. K线主图 -->
+            <Border Grid.Row="3" Background="White" CornerRadius="6" Margin="0,0,0,0">
                 <Grid>
-                    <!-- 左上角指标文字 -->
-                    <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,8" Panel.ZIndex="1">
+                    <!-- 左上角指标文字（浮在K线图内部左上角） -->
+                    <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,26" Panel.ZIndex="1">
                         <TextBlock FontSize="11">
-                            <Run Text="MA(5,10,20)  " Foreground="#999"/>
-                            <Run Text="MA5:" Foreground="#999"/>
-                            <Run Text="{Binding MA5Value, FallbackValue=--}" Foreground="#FFD700" FontWeight="Bold"/>
-                            <Run Text=" " Foreground="#999"/>
-                            <Run Text="MA10:" Foreground="#999"/>
-                            <Run Text="{Binding MA10Value, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
-                            <Run Text=" " Foreground="#999"/>
-                            <Run Text="MA20:" Foreground="#999"/>
-                            <Run Text="{Binding MA20Value, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
+                <Run Text="MA(5,10,20)  " Foreground="#999"/>
+                <Run Text="MA5:" Foreground="#999"/>
+                <Run Text="{Binding MA5Value, FallbackValue=--}" Foreground="#FFD700" FontWeight="Bold"/>
+                <Run Text=" " Foreground="#999"/>
+                <Run Text="MA10:" Foreground="#999"/>
+                <Run Text="{Binding MA10Value, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
+                <Run Text=" " Foreground="#999"/>
+                <Run Text="MA20:" Foreground="#999"/>
+                <Run Text="{Binding MA20Value, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
                         </TextBlock>
                         <TextBlock FontSize="11" Margin="0,3,0,0">
-                            <Run Text="EMA(5,10,20) " Foreground="#999"/>
-                            <Run Text="EMA5:" Foreground="#999"/>
-                            <Run Text="{Binding EMA5Value, FallbackValue=--}" Foreground="#FFD700" FontWeight="Bold"/>
-                            <Run Text=" " Foreground="#999"/>
-                            <Run Text="EMA10:" Foreground="#999"/>
-                            <Run Text="{Binding EMA10Value, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
-                            <Run Text=" " Foreground="#999"/>
-                            <Run Text="EMA20:" Foreground="#999"/>
-                            <Run Text="{Binding EMA20Value, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
+                <Run Text="EMA(5,10,20) " Foreground="#999"/>
+                <Run Text="EMA5:" Foreground="#999"/>
+                <Run Text="{Binding EMA5Value, FallbackValue=--}" Foreground="#FFD700" FontWeight="Bold"/>
+                <Run Text=" " Foreground="#999"/>
+                <Run Text="EMA10:" Foreground="#999"/>
+                <Run Text="{Binding EMA10Value, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
+                <Run Text=" " Foreground="#999"/>
+                <Run Text="EMA20:" Foreground="#999"/>
+                <Run Text="{Binding EMA20Value, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
                         </TextBlock>
                         <TextBlock FontSize="11" Margin="0,3,0,0">
-                            <Run Text="BOLL(20,2)   " Foreground="#999"/>
-                            <Run Text="UP:" Foreground="#999"/>
-                            <Run Text="{Binding BollUpValue, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
-                            <Run Text=" " Foreground="#999"/>
-                            <Run Text="MID:" Foreground="#999"/>
-                            <Run Text="{Binding BollMidValue, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
-                            <Run Text=" " Foreground="#999"/>
-                            <Run Text="DN:" Foreground="#999"/>
-                            <Run Text="{Binding BollDnValue, FallbackValue=--}" Foreground="#00A800" FontWeight="Bold"/>
+                <Run Text="BOLL(20,2)   " Foreground="#999"/>
+                <Run Text="UP:" Foreground="#999"/>
+                <Run Text="{Binding BollUpValue, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
+                <Run Text=" " Foreground="#999"/>
+                <Run Text="MID:" Foreground="#999"/>
+                <Run Text="{Binding BollMidValue, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
+                <Run Text=" " Foreground="#999"/>
+                <Run Text="DN:" Foreground="#999"/>
+                <Run Text="{Binding BollDnValue, FallbackValue=--}" Foreground="#00A800" FontWeight="Bold"/>
                         </TextBlock>
                     </StackPanel>
 
-                    <!-- K线图 -->
-                    <scottplot:WpfPlot x:Name="KlinePlot" Margin="40,65,10,0"/>
+                    <!-- K线图：顶部Margin改为0，让指标文字浮在图内部 -->
+                    <scottplot:WpfPlot x:Name="KlinePlot" Margin="10,0,10,0"/>
                 </Grid>
             </Border>
 
             <!-- 5. VOL副图 -->
-            <Border Grid.Row="4" Background="White" CornerRadius="6" Margin="0,0,0,20">
+            <!-- ← 改动7：去掉底部Margin，与MACD紧密相连 -->
+            <Border Grid.Row="4" Background="White" CornerRadius="6" Margin="0,0,0,0">
                 <Grid>
                     <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,4" Panel.ZIndex="1">
                         <TextBlock FontSize="11">
@@ -231,18 +239,16 @@
                             <Run Text="{Binding VolumeValue, FallbackValue=--}" Foreground="#333" FontWeight="Bold"/>
                         </TextBlock>
                     </StackPanel>
-                    <scottplot:WpfPlot x:Name="VolPlot" Margin="40,0,10,0"/>
+                    <!-- ← 改动8：左边距从40改为10 -->
+                    <scottplot:WpfPlot x:Name="VolPlot" Margin="10,0,10,0"/>
                 </Grid>
             </Border>
 
             <!-- 6. MACD副图 -->
             <Border Grid.Row="5" Background="White" CornerRadius="6">
+                <!-- ← 改动9：简化内部Grid，去掉无意义的ColumnDefinitions，统一左边距 -->
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="304*"/>
-                        <ColumnDefinition Width="841*"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Panel.ZIndex="1" Grid.ColumnSpan="2">
+                    <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,4" Panel.ZIndex="1">
                         <TextBlock FontSize="11">
                             <Run Text="MACD(12,26,9) " Foreground="#999"/>
                             <Run Text="DIF:" Foreground="#999"/>
@@ -255,7 +261,8 @@
                             <Run Text="{Binding MACDValue, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
                         </TextBlock>
                     </StackPanel>
-                    <scottplot:WpfPlot x:Name="MacdPlot" Margin="40,0,10,0" Grid.ColumnSpan="2"/>
+                    <!-- ← 改动10：左边距从40改为10 -->
+                    <scottplot:WpfPlot x:Name="MacdPlot" Margin="10,0,10,0"/>
                 </Grid>
             </Border>
         </Grid>
