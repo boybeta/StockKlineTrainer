@@ -443,13 +443,100 @@ namespace StockKLineTrainer
             KlinePlot.Plot.Clear();
             Debug.WriteLine("[DIAG] Plot cleared");
 
-            var candlestick = KlinePlot.Plot.Add.Candlestick(spOhlcList);
-            Debug.WriteLine($"[DIAG] Candlestick added, Sequential={candlestick.Sequential}");
+            // ===== 手动绘制 K 线（支持单根颜色 + 右侧内投影）=====
+            var mainBars = new List<ScottPlot.Bar>();
+            var shadowBars = new List<ScottPlot.Bar>();
+            var upperShadows = new List<ScottPlot.Bar>();
+            var lowerShadows = new List<ScottPlot.Bar>();
 
-            candlestick.Sequential = true;
-            candlestick.SymbolWidth = 0.8f;
-            candlestick.RisingColor = SPColor.FromHex("#FF3232");
-            candlestick.FallingColor = SPColor.FromHex("#00A800");
+            for (int i = windowStart; i < windowEnd; i++)
+            {
+                var d = dataList[i];
+                double x = i;
+                bool isRising = d.Close >= d.Open;
+                double prevClose = i > 0 ? dataList[i - 1].Close : d.Open;
+                double changePct = prevClose > 0 ? (d.Close - prevClose) / prevClose : 0;
+
+                // 颜色判断（0.195 = 20% 涨跌停，主板 10% 请改成 0.095）
+                SPColor mainColor;
+                if (changePct >= 0.195)
+                    mainColor = SPColor.FromHex("#ffb600");      // 涨停黄
+                else if (changePct <= -0.195)
+                    mainColor = SPColor.FromHex("#008eff");      // 跌停蓝
+                else if (isRising)
+                    mainColor = SPColor.FromHex("#e04555");      // 普通红
+                else
+                    mainColor = SPColor.FromHex("#1f9d72");      // 普通绿
+
+                // 内投影色（主色加深 30%）
+                SPColor shadowColor = new SPColor(
+                    (byte)(mainColor.R * 0.7),
+                    (byte)(mainColor.G * 0.7),
+                    (byte)(mainColor.B * 0.7)
+                );
+
+                double bodyTop = Math.Max(d.Open, d.Close);
+                double bodyBottom = Math.Min(d.Open, d.Close);
+                if (bodyTop - bodyBottom < 0.0001) bodyTop += 0.0001;
+
+                // 上影线
+                if (d.High > bodyTop)
+                {
+                    upperShadows.Add(new ScottPlot.Bar
+                    {
+                        Position = x,
+                        Value = d.High,
+                        ValueBase = bodyTop,
+                        Size = 0.02,
+                        FillColor = mainColor,
+                        LineWidth = 0
+                    });
+                }
+
+                // 下影线
+                if (d.Low < bodyBottom)
+                {
+                    lowerShadows.Add(new ScottPlot.Bar
+                    {
+                        Position = x,
+                        Value = bodyBottom,
+                        ValueBase = d.Low,
+                        Size = 0.2,
+                        FillColor = mainColor,
+                        LineWidth = 0
+                    });
+                }
+
+                // 实体主体
+                mainBars.Add(new ScottPlot.Bar
+                {
+                    Position = x,
+                    Value = bodyTop,
+                    ValueBase = bodyBottom,
+                    Size = 0.6,
+                    FillColor = mainColor,
+                    LineWidth = 0
+                });
+
+                // 右侧内投影（窄条，贴紧实体右边缘）
+                double shadowSize = 0.12;
+                double shadowPos = x + 0.3 - shadowSize / 2;
+                shadowBars.Add(new ScottPlot.Bar
+                {
+                    Position = shadowPos,
+                    Value = bodyTop,
+                    ValueBase = bodyBottom,
+                    Size = shadowSize,
+                    FillColor = shadowColor,
+                    LineWidth = 0
+                });
+            }
+
+            KlinePlot.Plot.Add.Bars(upperShadows);
+            KlinePlot.Plot.Add.Bars(lowerShadows);
+            KlinePlot.Plot.Add.Bars(mainBars);
+            KlinePlot.Plot.Add.Bars(shadowBars);
+
 
             AddMALines(dataList, windowStart, visibleCount);
             KlinePlot.Plot.Legend.IsVisible = false;
