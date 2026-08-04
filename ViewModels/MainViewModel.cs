@@ -444,10 +444,9 @@ namespace StockKLineTrainer
             Debug.WriteLine("[DIAG] Plot cleared");
 
             // ===== 手动绘制 K 线（支持单根颜色 + 右侧内投影）=====
+            // ===== 手动绘制 K 线（支持单根颜色 + 右侧内投影）=====
             var mainBars = new List<ScottPlot.Bar>();
             var shadowBars = new List<ScottPlot.Bar>();
-            var upperShadows = new List<ScottPlot.Bar>();
-            var lowerShadows = new List<ScottPlot.Bar>();
 
             for (int i = windowStart; i < windowEnd; i++)
             {
@@ -479,32 +478,26 @@ namespace StockKLineTrainer
                 double bodyBottom = Math.Min(d.Open, d.Close);
                 if (bodyTop - bodyBottom < 0.0001) bodyTop += 0.0001;
 
-                // 上影线
+                // ===== 上影线（改用 Line，加粗 2.5px）=====
                 if (d.High > bodyTop)
                 {
-                    upperShadows.Add(new ScottPlot.Bar
-                    {
-                        Position = x,
-                        Value = d.High,
-                        ValueBase = bodyTop,
-                        Size = 0.02,
-                        FillColor = mainColor,
-                        LineWidth = 0
-                    });
+                    var upperLine = KlinePlot.Plot.Add.Line(
+                        new Coordinates(x, bodyTop),
+                        new Coordinates(x, d.High)
+                    );
+                    upperLine.Color = mainColor;
+                    upperLine.LineWidth = 1.0f;
                 }
 
-                // 下影线
+                // ===== 下影线（改用 Line，加粗 2.5px）=====
                 if (d.Low < bodyBottom)
                 {
-                    lowerShadows.Add(new ScottPlot.Bar
-                    {
-                        Position = x,
-                        Value = bodyBottom,
-                        ValueBase = d.Low,
-                        Size = 0.2,
-                        FillColor = mainColor,
-                        LineWidth = 0
-                    });
+                    var lowerLine = KlinePlot.Plot.Add.Line(
+                        new Coordinates(x, d.Low),
+                        new Coordinates(x, bodyBottom)
+                    );
+                    lowerLine.Color = mainColor;
+                    lowerLine.LineWidth = 1.0f;
                 }
 
                 // 实体主体
@@ -518,7 +511,7 @@ namespace StockKLineTrainer
                     LineWidth = 0
                 });
 
-                // 右侧内投影（窄条，贴紧实体右边缘）
+                // 右侧内投影
                 double shadowSize = 0.12;
                 double shadowPos = x + 0.3 - shadowSize / 2;
                 shadowBars.Add(new ScottPlot.Bar
@@ -532,8 +525,6 @@ namespace StockKLineTrainer
                 });
             }
 
-            KlinePlot.Plot.Add.Bars(upperShadows);
-            KlinePlot.Plot.Add.Bars(lowerShadows);
             KlinePlot.Plot.Add.Bars(mainBars);
             KlinePlot.Plot.Add.Bars(shadowBars);
 
