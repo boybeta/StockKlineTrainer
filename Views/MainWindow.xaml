@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:scottplot="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
         mc:Ignorable="d"
-        Title="爆竹K线训练助手"
+        
         Width="1400"
         Height="900"
         ResizeMode="NoResize"
@@ -95,7 +95,7 @@
         BorderBrush="#DDD" BorderThickness="1">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="55"/>
+                        <ColumnDefinition Width="10"/>
                         <ColumnDefinition Width="1"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="1"/>

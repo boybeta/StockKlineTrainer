@@ -15,6 +15,7 @@
 	  <None Remove="fonts\msyhbd.ttc" />
 	  <None Remove="fonts\msyhl.ttc" />
 	  <None Remove="Images\logo.png" />
+	  <None Remove="stockdata\cy_stock.db" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -28,6 +29,9 @@
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </Content>
 	  <Content Include="Images\logo.png">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </Content>
+	  <Content Include="stockdata\cy_stock.db">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </Content>
 	</ItemGroup>

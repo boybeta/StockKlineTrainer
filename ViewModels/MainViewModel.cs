@@ -14,6 +14,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using SPColor = ScottPlot.Color;
+using System.IO;
 
 namespace StockKLineTrainer
 {
@@ -291,7 +292,8 @@ namespace StockKLineTrainer
 
         public MainViewModel()
         {
-            _dbService = new DatabaseService(@"E:\baozhu\stockdata\cy_stock.db");
+            string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "stockdata", "cy_stock.db");
+            _dbService = new DatabaseService(dbPath);
 
             RefreshCommand = new RelayCommand(_ => LoadData());
             RandomStockCommand = new RelayCommand(_ => LoadRandomStock());
@@ -1248,8 +1250,9 @@ namespace StockKLineTrainer
             NotifyAllStats();
             CommandManager.InvalidateRequerySuggested();
 
-            _initialFirecrackers = TotalFirecrackers;
             ShowTrainingResult();
+            _initialFirecrackers = TotalFirecrackers;
+            
         }
 
         private double GetCurrentPrice()
@@ -1565,6 +1568,7 @@ namespace StockKLineTrainer
         private void NextGame()
         {
             StopTimer();
+            _initialFirecrackers = TotalFirecrackers;
             ResetTrainingStats();
             _isTrainingMode = false;
             _isAnswerRevealed = false;
@@ -1601,6 +1605,7 @@ namespace StockKLineTrainer
             ResetTrainingStats();
             TrainingStatus = "浏览模式";
             LoadData();
+            Application.Current.Shutdown();
         }
     }
 }
