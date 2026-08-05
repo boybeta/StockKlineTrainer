@@ -263,20 +263,24 @@ namespace StockKLineTrainer
         }
 
         // ===== 开仓收益 =====
-        public double OpenProfitAmount => _hasPosition ? CurrentMarketValue - _holdBuyAmount : 0;
+        public string OpenProfitAmount => _hasPosition && _holdBuyAmount > 0
+    ? ((CurrentMarketValue - _holdBuyAmount) / _holdBuyAmount * 100).ToString("F2") + "%"
+    : "0.00%";
 
         public double OpenProfitPct => _hasPosition && _holdBuyAmount > 0
             ? (CurrentMarketValue - _holdBuyAmount) / _holdBuyAmount * 100
             : 0;
 
         // ===== 本局收益 =====
-        public double TotalProfitAmount => TotalFirecrackers - _initialFirecrackers;
+        public string TotalProfitAmount => _initialFirecrackers > 0
+? ((TotalFirecrackers - _initialFirecrackers) / _initialFirecrackers * 100).ToString("F2") + "%"
+    : "0.00%";
         public double TotalProfitPct => _initialFirecrackers > 0
             ? (TotalFirecrackers - _initialFirecrackers) / _initialFirecrackers * 100
             : 0;
 
-        public Brush OpenProfitBrush => GetProfitBrush(OpenProfitAmount);
-        public Brush TotalProfitBrush => GetProfitBrush(TotalProfitAmount);
+        public Brush OpenProfitBrush => GetProfitBrush(OpenProfitPct);
+        public Brush TotalProfitBrush => GetProfitBrush(TotalProfitPct);
 
         private Brush GetProfitBrush(double value)
         {
@@ -598,13 +602,14 @@ namespace StockKLineTrainer
             KlinePlot.Plot.Grid.MajorLineColor = SPColor.FromHex("#F0F0F0");
             KlinePlot.Plot.Grid.MajorLineWidth = 0.5f;
 
-            // ===== 训练开始标记线（蓝色竖虚线） =====
+            
+            // ===== 训练开始标记线（蓝色竖虚线）=====
             if (_isTrainingMode && _startMarkerIndex >= 0)
             {
                 var marker = KlinePlot.Plot.Add.VerticalLine(_startMarkerIndex);
                 marker.Color = SPColor.FromHex("#2196F3");
                 marker.LineWidth = 2;
-                marker.LinePattern = LinePattern.Dashed;
+                marker.LinePattern = new LinePattern(new float[] { 2, 1 }, 0, "Dense");
             }
 
             // ===== 绘制 B/S 标记和"开始"标签 =====
@@ -637,21 +642,27 @@ namespace StockKLineTrainer
                 txt.LabelStyle.Alignment = Alignment.LowerCenter;
             }
 
-            // 绘制"开始"标签
+            // 绘制"开始"标签（修复：放在可见区域顶部，向下展开避免被裁）
             if (_isTrainingMode && _startMarkerIndex >= 0)
             {
                 int startIdx = (int)Math.Floor(_startMarkerIndex);
                 if (startIdx >= windowStart && startIdx < windowEnd && startIdx < dataList.Count)
                 {
-                    double startY = dataList[startIdx].High * 1.05;
+                    var limits = KlinePlot!.Plot.Axes.GetLimits();
+                    double yMax = limits.YRange.Max;
+                    double yMin = limits.YRange.Min;
+                    double startY = yMax - (yMax - yMin) * 0.02;
+
                     var startTxt = KlinePlot!.Plot.Add.Text("开始", new Coordinates(_startMarkerIndex, startY));
+                    startTxt.LabelStyle.FontName = "微软雅黑";
                     startTxt.LabelStyle.FontSize = 10;
                     startTxt.LabelStyle.Bold = true;
                     startTxt.LabelStyle.ForeColor = SPColor.FromHex("#FFFFFF");
                     startTxt.LabelStyle.BackgroundColor = SPColor.FromHex("#2196F3");
                     startTxt.LabelStyle.BorderColor = SPColor.FromHex("#2196F3");
                     startTxt.LabelStyle.BorderWidth = 1;
-                    startTxt.LabelStyle.Alignment = Alignment.LowerCenter;
+                    startTxt.LabelStyle.Alignment = Alignment.UpperCenter; // ← 向下展开
+
                 }
             }
         }
@@ -755,7 +766,7 @@ namespace StockKLineTrainer
             }
             VolPlot.Plot.Axes.Top.IsVisible = false;
             VolPlot.Plot.Axes.Left.IsVisible = false;
-            VolPlot.Plot.Axes.Right.IsVisible = false;
+            VolPlot.Plot.Axes.Right.IsVisible = true;
             VolPlot.Plot.Axes.Right.Label.Text = "";
             VolPlot.Plot.Axes.Bottom.IsVisible = false;
 
@@ -866,7 +877,7 @@ namespace StockKLineTrainer
 
             MacdPlot.Plot.Axes.Top.IsVisible = false;
             MacdPlot.Plot.Axes.Left.IsVisible = false;
-            MacdPlot.Plot.Axes.Right.IsVisible = false;
+            MacdPlot.Plot.Axes.Right.IsVisible = true;
             MacdPlot.Plot.Axes.Right.Label.Text = "";
             MacdPlot.Plot.Axes.Bottom.IsVisible = false;
 

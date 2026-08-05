@@ -6,7 +6,7 @@
         xmlns:scottplot="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
         mc:Ignorable="d"
         Title="爆竹K线训练助手"
-        Width="1500"
+        Width="1400"
         Height="900"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
@@ -58,7 +58,7 @@
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="340"/>
         </Grid.ColumnDefinitions>
 
@@ -78,17 +78,16 @@
             </Grid.RowDefinitions>
 
             <!-- 1. 标题栏 -->
+            <!-- 1. 标题栏 -->
             <Border Grid.Row="0" Background="White" CornerRadius="6" Margin="0,0,0,6">
                 <DockPanel VerticalAlignment="Center">
-                    <Button Content="返回" Width="56" Height="28" Margin="10,0"
-                            Background="Transparent" BorderBrush="#DDD" BorderThickness="1"
-                            FontSize="13" Cursor="Hand"/>
+                    <Image Source="pack://application:,,,/Images/logo.png" Height="32" Margin="10,0"/>
                     <TextBlock Text="爆竹K线训练" FontSize="16" FontWeight="Bold"
-                               VerticalAlignment="Center" Margin="8,0"/>
+                   VerticalAlignment="Center" Margin="8,0"/>
                 </DockPanel>
             </Border>
 
-            
+
             <!-- 2. 股票信息栏 -->
             <!-- 2. 股票信息栏 -->
             <!-- 2. 股票信息栏 -->
@@ -379,37 +378,37 @@
                             <Border Background="#F5F5F5" CornerRadius="4" Padding="6,5" Margin="2">
                                 <StackPanel>
                                     <TextBlock Text="{Binding OpenCount, FallbackValue=0}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="开仓次数" FontSize="10" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                    <TextBlock Text="开仓次数" FontSize="12" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
                             <Border Background="#F5F5F5" CornerRadius="4" Padding="6,5" Margin="2">
                                 <StackPanel>
                                     <TextBlock Text="{Binding ProfitCount, FallbackValue=0}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="盈利次数" FontSize="10" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                    <TextBlock Text="盈利次数" FontSize="12" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
                             <Border Background="#F5F5F5" CornerRadius="4" Padding="6,5" Margin="2">
                                 <StackPanel>
                                     <TextBlock Text="{Binding WatchDays, FallbackValue=0}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="观望天数" FontSize="10" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                    <TextBlock Text="观望天数" FontSize="12" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
                             <Border Background="#F5F5F5" CornerRadius="4" Padding="6,5" Margin="2">
                                 <StackPanel>
                                     <TextBlock Text="{Binding HoldDays, FallbackValue=0}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="持仓天数" FontSize="10" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                    <TextBlock Text="持仓天数" FontSize="12" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
                             <Border Background="#F5F5F5" CornerRadius="4" Padding="6,5" Margin="2">
                                 <StackPanel>
                                     <TextBlock Text="{Binding HeavyHoldDays, FallbackValue=0}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="重仓天数" FontSize="10" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                    <TextBlock Text="重仓天数" FontSize="12" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
                             <Border Background="#F5F5F5" CornerRadius="4" Padding="6,5" Margin="2">
                                 <StackPanel>
                                     <TextBlock Text="{Binding ElapsedText, FallbackValue=0s}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="用时" FontSize="10" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                    <TextBlock Text="用时" FontSize="12" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
                         </UniformGrid>
@@ -425,20 +424,74 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <Button Grid.Column="0" Margin="0,0,3,0" Height="48" Background="#E91E63" Foreground="White" BorderThickness="0" FontWeight="Bold"
-                                    Command="{Binding BuyCommand}">
-                                <StackPanel>
-                                    <TextBlock Text="买入" FontSize="16"/>
-                                    <TextBlock Text="{Binding BuyBtnSubText, FallbackValue=可买1/1仓}" FontSize="10" Opacity="0.85" Margin="0,1,0,0"/>
-                                    <TextBlock Text="B" FontSize="9" Opacity="0.6" Margin="0,1,0,0"/>
+                            <Button Grid.Column="0" Margin="0,0,3,0" Height="48" BorderThickness="0" FontWeight="Bold"
+        Command="{Binding BuyCommand}">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Background" Value="#E91E63"/>
+                                        <Setter Property="Foreground" Value="White"/>
+                                        <Setter Property="Opacity" Value="1"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                                                        <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter Property="Background" Value="#E91E63"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="B" FontSize="25" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="买入" FontSize="16"/>
+                                        <TextBlock Text="{Binding BuyBtnSubText, FallbackValue=可买1/1仓}" FontSize="10" Opacity="0.85" Margin="0,1,0,0"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Button>
-                            <Button Grid.Column="1" Margin="3,0,0,0" Height="48" Background="#81C784" Foreground="White" BorderThickness="0" FontWeight="Bold"
-                                    Command="{Binding SellCommand}">
-                                <StackPanel>
-                                    <TextBlock Text="卖出" FontSize="16"/>
-                                    <TextBlock Text="{Binding SellBtnSubText, FallbackValue=无仓位可卖}" FontSize="10" Opacity="0.85" Margin="0,1,0,0"/>
-                                    <TextBlock Text="M" FontSize="9" Opacity="0.6" Margin="0,1,0,0"/>
+                            <Button Grid.Column="1" Margin="3,0,0,0" Height="48" BorderThickness="0" FontWeight="Bold"
+        Command="{Binding SellCommand}">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Background" Value="#FF0E5B11"/>
+                                        <Setter Property="Foreground" Value="White"/>
+                                        <Setter Property="Opacity" Value="1"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                                                        <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter Property="Background" Value="#FF0E5B11"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="S" FontSize="25" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="卖出" FontSize="16"/>
+                                        <TextBlock Text="{Binding SellBtnSubText, FallbackValue=无仓位可卖}" FontSize="10" Opacity="0.85" Margin="0,1,0,0"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Button>
                         </Grid>
@@ -547,12 +600,35 @@
 
                 <!-- 结束训练并结算 - 固定在底部 -->
                 <Button Grid.Row="1" Height="44" Margin="0,10,0,0"
-                        Background="#2C3E50" Foreground="White"
-                        FontSize="14" FontWeight="Bold" BorderThickness="0" Cursor="Hand"
-                        Command="{Binding SettleCommand}">
+        FontSize="14" FontWeight="Bold" BorderThickness="0" Cursor="Hand"
+        Command="{Binding SettleCommand}">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Background" Value="#2C3E50"/>
+                            <Setter Property="Foreground" Value="White"/>
+                            <Setter Property="Opacity" Value="1"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Background" Value="#2C3E50"/>
+                                    <Setter Property="Foreground" Value="White"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
                     结束训练并结算
                 </Button>
-
             </Grid>
         </Border>
     </Grid>

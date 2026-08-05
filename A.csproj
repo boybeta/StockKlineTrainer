@@ -11,6 +11,28 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <None Remove="fonts\msyh.ttc" />
+	  <None Remove="fonts\msyhbd.ttc" />
+	  <None Remove="fonts\msyhl.ttc" />
+	  <None Remove="Images\logo.png" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Content Include="fonts\msyh.ttc">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </Content>
+	  <Content Include="fonts\msyhbd.ttc">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </Content>
+	  <Content Include="fonts\msyhl.ttc">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </Content>
+	  <Content Include="Images\logo.png">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </Content>
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
 		<PackageReference Include="ScottPlot.WPF" Version="5.1.59" />
 		<PackageReference Include="System.Data.SQLite.Core" Version="1.0.119" />
