@@ -1,12 +1,12 @@
-﻿using System.Windows;
+﻿using BaozhuKLineTrainer;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
-namespace StockKLineTrainer
+namespace BaozhuKLineTrainer
 {
     public partial class TrainingResultWindow : Window
     {
-        // 用户点了哪个按钮，外部通过这属性读取
         public ResultAction ResultAction { get; private set; } = ResultAction.None;
 
         public TrainingResultWindow(TrainingResult result)
@@ -17,8 +17,8 @@ namespace StockKLineTrainer
 
         private void Grid_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            // 只有点击遮罩才关闭（点内容区不关闭）
-            if (e.Source is Border border && border.Background.ToString() == "#80000000")
+            // 点击窗口任意空白处关闭（因为没有标题栏关闭按钮）
+            if (e.Source is Border)
             {
                 ResultAction = ResultAction.None;
                 Close();

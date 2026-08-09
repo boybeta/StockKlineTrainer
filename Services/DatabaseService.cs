@@ -1,10 +1,10 @@
 ﻿using Microsoft.Data.Sqlite;
-using StockKLineTrainer.Models;
+using BaozhuKLineTrainer.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace StockKLineTrainer.Services
+namespace BaozhuKLineTrainer.Services
 {
     public class DatabaseService
     {

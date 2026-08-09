@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Windows.Input;
 
-namespace StockKLineTrainer
+namespace BaozhuKLineTrainer
 {
     public class RelayCommand : ICommand
     {

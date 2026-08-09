@@ -1,7 +1,7 @@
 ﻿using ScottPlot;
 using ScottPlot.WPF;
-using StockKLineTrainer.Models;
-using StockKLineTrainer.Services;
+using BaozhuKLineTrainer.Models;
+using BaozhuKLineTrainer.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -15,8 +15,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using SPColor = ScottPlot.Color;
 using System.IO;
-
-namespace StockKLineTrainer
+namespace BaozhuKLineTrainer
 {
     public class TradeRecord
     {

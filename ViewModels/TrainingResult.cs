@@ -1,6 +1,6 @@
 ﻿using System.Windows.Media;
 
-namespace StockKLineTrainer
+namespace BaozhuKLineTrainer
 {
     public class TrainingResult
     {

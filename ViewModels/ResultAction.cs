@@ -1,4 +1,4 @@
-﻿namespace StockKLineTrainer
+﻿namespace BaozhuKLineTrainer
 {
     public enum ResultAction
     {

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace StockKLineTrainer.Models
+namespace BaozhuKLineTrainer.Models
 {
     public class StockData
     {

@@ -1,0 +1,252 @@
+﻿<Window x:Class="BaozhuKLineTrainer.DoubleBlindTrainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:local="clr-namespace:BaozhuKLineTrainer"
+        Title="双盲训练"
+        Width="720" Height="680"
+        MinWidth="420" MinHeight="600"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        FontFamily="Microsoft YaHei">
+
+    <!-- net10 + UseWPF 下 WindowChrome 在 PresentationFramework，不是 Microsoft.Windows.Shell -->
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="32"
+                            CornerRadius="16"
+                            GlassFrameThickness="0"
+                            ResizeBorderThickness="0"/>
+    </shell:WindowChrome.WindowChrome>
+
+    <Window.Resources>
+        <!-- 止盈/止损互斥用 -->
+        <local:InverseBooleanConverter x:Key="InverseBooleanConverter" />
+
+        <!-- 胶囊 Toggle 样式（主板 / 创业板 / 科创板 那排） -->
+        <Style x:Key="ChipToggleStyle" TargetType="ToggleButton"
+               BasedOn="{StaticResource MaterialDesignFlatButton}">
+            <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="14"/>
+            <Setter Property="Padding" Value="12,4"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesignDivider}"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}"/>
+            <Style.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Background" Value="#E6F0FF"/>
+                    <Setter Property="BorderBrush" Value="#2E5BFF"/>
+                    <Setter Property="Foreground" Value="#2E5BFF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <!-- 外层圆角 + 阴影 -->
+    <Border Background="White"
+            CornerRadius="16"
+            Margin="8">
+        <Border.Effect>
+            <DropShadowEffect Color="#33000000" BlurRadius="18" ShadowDepth="2" Opacity="0.35"/>
+        </Border.Effect>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="48"/>
+                <!-- 自定义标题栏 -->
+                <RowDefinition Height="*"/>
+                <!-- 内容 -->
+                <RowDefinition Height="Auto"/>
+                <!-- 底部按钮 -->
+            </Grid.RowDefinitions>
+
+            <!-- ── 自定义标题栏（可拖拽）── -->
+            <DockPanel Grid.Row="0"
+                       Background="Transparent"
+                       shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                <TextBlock Text="双盲训练"
+                           FontSize="16" FontWeight="SemiBold"
+                           VerticalAlignment="Center" Margin="20,0,0,0"/>
+                <Button DockPanel.Dock="Right"
+                        Width="36" Height="36"
+                        Style="{StaticResource MaterialDesignIconButton}"
+                        materialDesign:ButtonAssist.CornerRadius="18"
+                        HorizontalAlignment="Right"
+                        Click="Close_Click"
+                        ToolTip="关闭"
+                        Margin="0,0,12,0">
+                    <materialDesign:PackIcon Kind="Close" Width="18" Height="18"/>
+                </Button>
+            </DockPanel>
+
+            <!-- ── 内容区 ── -->
+            <ScrollViewer Grid.Row="1"
+                          Padding="20,0,20,10"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+
+                    <!-- 说明文字 -->
+                    <TextBlock TextWrapping="Wrap"
+                               FontSize="12" Foreground="#888"
+                               Margin="1,0,0,18" LineHeight="20" Padding="10,0,0,0">
+                        双盲训练完全随机，选取实盘股票走势。您将模拟交易未知时间、未知股票的 150 根 K线/分时，
+                        盈亏会影响您的爆竹数和段位，请认真对待。
+                    </TextBlock>
+
+                    <!-- 分仓模式 -->
+                    <DockPanel Margin="0,0,0,14">
+                        <TextBlock Text="分仓模式" FontSize="14" VerticalAlignment="Center" Padding="15,0,0,0"/>
+                        <ToggleButton x:Name="TglSplitPosition"
+                                      DockPanel.Dock="Right"
+                                      Style="{StaticResource MaterialDesignSwitchToggleButton}" Padding="-16,1,0,0" ScrollViewer.CanContentScroll="True" Margin="512,0,0,0" Height="25" Width="45" Background="#FF2E5BFF"/>
+                    </DockPanel>
+
+                    <!-- 市场类型 + 训练时间段（两列卡片） -->
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- 市场类型 -->
+                        <Border Grid.Column="0" Background="#F8F9FB" CornerRadius="10" Padding="14">
+                            <StackPanel>
+                                <TextBlock Text="市场类型" FontSize="12" Foreground="#999" Margin="0,0,0,8"/>
+                                <UniformGrid Columns="4" Rows="1">
+                                    <ToggleButton Content="不限"   Style="{StaticResource ChipToggleStyle}" IsChecked="True" Margin="1"/>
+                                    <ToggleButton Content="主板"   Style="{StaticResource ChipToggleStyle}" Margin="1"/>
+                                    <ToggleButton Content="创业板" Style="{StaticResource ChipToggleStyle}" Margin="1"/>
+                                    <ToggleButton Content="科创板" Style="{StaticResource ChipToggleStyle}" Margin="1"/>
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 训练时间段 -->
+                        <Border Grid.Column="2" Background="#F8F9FB" CornerRadius="10" Padding="14">
+                            <StackPanel>
+                                <TextBlock Text="训练时间段" FontSize="12" Foreground="#999" Margin="0,0,0,8"/>
+                                <UniformGrid Columns="3" Rows="1">
+                                    <ToggleButton Content="不限"    Style="{StaticResource ChipToggleStyle}" IsChecked="True" Margin="1"/>
+                                    <ToggleButton Content="最近5年" Style="{StaticResource ChipToggleStyle}" Margin="1"/>
+                                    <ToggleButton Content="最近10年" Style="{StaticResource ChipToggleStyle}" Margin="1"/>
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- 使用爆竹比例 -->
+                    <DockPanel Margin="0,0,0,14">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="3,0,0,0">
+                            <TextBox x:Name="TxtFirecrackerRatio"
+                                     Text="100%"
+                                     Width="50" FontSize="14"
+                                     BorderThickness="0"
+                                     Background="Transparent"
+                                     TextAlignment="Right"
+                                     VerticalAlignment="Center"/>
+                            <TextBlock Text="%" FontSize="14" VerticalAlignment="Center" Foreground="#999" Margin="31,0,0,0" RenderTransformOrigin="0.5,0.5" Width="3">
+                                <TextBlock.RenderTransform>
+                                    <TransformGroup>
+                                        <ScaleTransform ScaleX="-1"/>
+                                        <SkewTransform/>
+                                        <RotateTransform/>
+                                        <TranslateTransform/>
+                                    </TransformGroup>
+                                </TextBlock.RenderTransform>
+                            </TextBlock>
+                        </StackPanel>
+                        <TextBlock Text="使用爆竹比例" FontSize="14" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                    </DockPanel>
+
+                    <!-- 杠杆 -->
+                    <DockPanel Margin="5,0,0,14">
+                        <TextBlock Text="杠杆" FontSize="14" VerticalAlignment="Center" Margin="9,0,0,0"/>
+                        <ToggleButton x:Name="TglLeverage" DockPanel.Dock="Right"
+                                      Style="{StaticResource MaterialDesignSwitchToggleButton}" Margin="570,0,0,0" Width="45" Height="25" Background="#FF2E5BFF"/>
+                    </DockPanel>
+
+                    <!-- 周月按日跳 + 开盘买入（两列卡片） -->
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Background="#F8F9FB" CornerRadius="10" Padding="14">
+                            <DockPanel>
+                                <ToggleButton x:Name="TglWeekMonthDayJump" DockPanel.Dock="Right"
+                                              Style="{StaticResource MaterialDesignSwitchToggleButton}" Width="45" Height="25" Background="#FF2E5BFF"/>
+                                <TextBlock Text="周月按日跳" FontSize="14" VerticalAlignment="Center"/>
+                            </DockPanel>
+                        </Border>
+
+                        <Border Grid.Column="2" Background="#F8F9FB" CornerRadius="10" Padding="14">
+                            <DockPanel>
+                                <ToggleButton x:Name="TglOpenBuy" DockPanel.Dock="Right"
+                                              Style="{StaticResource MaterialDesignSwitchToggleButton}" Width="45" Margin="-40,0,0,0" Padding="-5,1,0,0" Background="#FF2E5BFF"/>
+                                <TextBlock Text="开盘买入" FontSize="14" Width="100"/>
+                            </DockPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- 止盈 -->
+                    <DockPanel Margin="0,0,0,14">
+                        <TextBlock Text="止盈" FontSize="14" VerticalAlignment="Center" Margin="14,0,0,0"/>
+                        <ToggleButton x:Name="TglStopProfit" DockPanel.Dock="Right"
+                                      IsChecked="True"
+                                      Style="{StaticResource MaterialDesignSwitchToggleButton}" Width="45" Height="25" Margin="-3,0,0,0" Background="#FF2E5BFF"/>
+                    </DockPanel>
+
+                    <!-- 止损（与止盈互斥） -->
+                    <DockPanel Margin="0,0,0,14">
+                        <TextBlock Text="止损" FontSize="14" VerticalAlignment="Center" Margin="14,0,0,0"/>
+                        <ToggleButton x:Name="TglStopLoss" DockPanel.Dock="Right"
+                                      IsChecked="{Binding ElementName=TglStopProfit, Path=IsChecked,
+                                                  Converter={StaticResource InverseBooleanConverter}}"
+                                      Style="{StaticResource MaterialDesignSwitchToggleButton}" Width="45" Height="25" Background="#FF2E5BFF"/>
+                    </DockPanel>
+
+                    <!-- 自动卖出 -->
+                    <DockPanel Margin="0,0,0,14">
+                        <TextBlock Text="自动卖出" FontSize="14" VerticalAlignment="Center" Margin="13,0,0,0"/>
+                        <ToggleButton x:Name="TglAutoSell" DockPanel.Dock="Right"
+                                      Style="{StaticResource MaterialDesignSwitchToggleButton}" Width="45" Height="25" Margin="-21,0,0,0" Background="#FF2E5BFF"/>
+                    </DockPanel>
+
+                    <!-- 去除 ST -->
+                    <DockPanel Margin="0,0,0,14">
+                        <TextBlock Text="去除 ST" FontSize="14" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        <ToggleButton x:Name="TglRemoveST" DockPanel.Dock="Right"
+                                      Style="{StaticResource MaterialDesignSwitchToggleButton}" Width="45" Height="25" Margin="-11,0,0,0" Background="#FF2E5BFF"/>
+                    </DockPanel>
+
+                    <!-- 买卖自动跳 -->
+                    <DockPanel Margin="0,0,0,14">
+                        <TextBlock Text="买卖自动跳" FontSize="14" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        <ToggleButton x:Name="TglTradeAutoSkip" DockPanel.Dock="Right"
+                                      Style="{StaticResource MaterialDesignSwitchToggleButton}" Width="45" Height="25" Margin="-31,0,0,0" Background="#FF2E5BFF"/>
+                    </DockPanel>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ── 底部：开始训练 ── -->
+            <Button Grid.Row="2"
+                    Content="开始训练"
+                    Height="48" Margin="20,8,20,20"
+                    FontSize="16" FontWeight="Bold"
+                    Foreground="White"
+                    Background="#2E5BFF"
+                    BorderThickness="0"
+                    materialDesign:ButtonAssist.CornerRadius="24"
+                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    Click="StartTraining_Click"/>
+        </Grid>
+    </Border>
+</Window>

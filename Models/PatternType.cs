@@ -1,4 +1,4 @@
-﻿namespace StockKLineTrainer.Models
+﻿namespace BaozhuKLineTrainer.Models
 {
     public enum PatternType
     {
