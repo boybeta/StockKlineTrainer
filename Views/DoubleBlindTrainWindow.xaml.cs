@@ -1,4 +1,7 @@
-﻿using System.Windows;
+﻿using System;
+using System.Globalization;
+using System.Windows;
+using System.Windows.Input;
 
 namespace BaozhuKLineTrainer
 {
@@ -16,18 +19,49 @@ namespace BaozhuKLineTrainer
 
         private void StartTraining_Click(object sender, RoutedEventArgs e)
         {
-            // 1. 创建K线训练窗口（非模态打开）
             KLineTrainWindow kLineWin = new KLineTrainWindow();
             kLineWin.Show();
-
-            // 2. 把K线窗口设为主窗口，后续弹窗（如TrainingResultWindow）才能正确找到Owner
             Application.Current.MainWindow = kLineWin;
-
-            // 3. 关闭当前双盲配置窗口
             this.Close();
-
-            // 4. 关闭首页MainWindow（this.Owner就是打开当前窗口的MainWindow）
             this.Owner?.Close();
+        }
+
+        // ========== 止盈数值调节 ==========
+
+        private void TxtStopProfit_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            e.Handled = !int.TryParse(e.Text, out _);
+        }
+
+        private void BtnProfitUp_Click(object sender, RoutedEventArgs e)
+        {
+            if (int.TryParse(TxtStopProfit.Text, out int val))
+                TxtStopProfit.Text = (val + 1).ToString();
+        }
+
+        private void BtnProfitDown_Click(object sender, RoutedEventArgs e)
+        {
+            if (int.TryParse(TxtStopProfit.Text, out int val))
+                TxtStopProfit.Text = Math.Max(1, val - 1).ToString();
+        }
+
+        // ========== 止损数值调节（新增） ==========
+
+        private void TxtStopLoss_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            e.Handled = !int.TryParse(e.Text, out _);
+        }
+
+        private void BtnLossUp_Click(object sender, RoutedEventArgs e)
+        {
+            if (int.TryParse(TxtStopLoss.Text, out int val))
+                TxtStopLoss.Text = (val + 1).ToString();
+        }
+
+        private void BtnLossDown_Click(object sender, RoutedEventArgs e)
+        {
+            if (int.TryParse(TxtStopLoss.Text, out int val))
+                TxtStopLoss.Text = Math.Max(1, val - 1).ToString();
         }
     }
 }
