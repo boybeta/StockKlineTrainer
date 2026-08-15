@@ -63,5 +63,33 @@ namespace BaozhuKLineTrainer
             if (int.TryParse(TxtStopLoss.Text, out int val))
                 TxtStopLoss.Text = Math.Max(1, val - 1).ToString();
         }
+
+        // ========== 自动卖出天数调节 ==========
+
+        private void BtnAutoSellMinus_Click(object sender, RoutedEventArgs e)
+        {
+            if (SliderAutoSell.Value > SliderAutoSell.Minimum)
+                SliderAutoSell.Value -= 1;
+        }
+
+        private void BtnAutoSellPlus_Click(object sender, RoutedEventArgs e)
+        {
+            if (SliderAutoSell.Value < SliderAutoSell.Maximum)
+                SliderAutoSell.Value += 1;
+        }
+
+        // ========== 分仓模式调节 ==========
+
+        private void BtnSplitMinus_Click(object sender, RoutedEventArgs e)
+        {
+            if (SliderSplitPosition.Value > SliderSplitPosition.Minimum)
+                SliderSplitPosition.Value -= 10;
+        }
+
+        private void BtnSplitPlus_Click(object sender, RoutedEventArgs e)
+        {
+            if (SliderSplitPosition.Value < SliderSplitPosition.Maximum)
+                SliderSplitPosition.Value += 10;
+        }
     }
 }

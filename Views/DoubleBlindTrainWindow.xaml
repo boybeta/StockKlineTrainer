@@ -80,6 +80,53 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <!-- 圆形加减按钮 -->
+        <Style x:Key="CircleButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="20"/>
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#D0D0D0"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#666"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border CornerRadius="10"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F5F5F5"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#E8E8E8"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <!-- Slider 轨道点击区域样式（透明响应点击，或显示蓝色进度） -->
+        <Style x:Key="SliderRepeatButtonStyle" TargetType="RepeatButton">
+            <Setter Property="OverridesDefaultStyle" Value="True"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="IsTabStop" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border Background="{TemplateBinding Background}" 
+                                Height="4" CornerRadius="2" 
+                                SnapsToDevicePixels="True"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Border Background="White"
@@ -130,12 +177,77 @@
                     </TextBlock>
 
                     <!-- 分仓模式 -->
+                    <!-- 分仓模式 -->
                     <DockPanel Margin="0,0,14,14">
                         <TextBlock Text="分仓模式" FontSize="14" VerticalAlignment="Center"/>
-                        <ToggleButton x:Name="TglSplitPosition"
-                                      DockPanel.Dock="Right"
+
+                        <!-- 开关：最右侧 -->
+                        <ToggleButton x:Name="TglSplitPosition" DockPanel.Dock="Right"
                                       Style="{StaticResource MaterialDesignSwitchToggleButton}"
-                                      Width="45" Height="25"/>
+                                      Width="45" Height="25" Background="#FF2E5BFF"/>
+
+                        <!-- 滑块区域：开关左侧，打开时显示 -->
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                                    VerticalAlignment="Center" Margin="280,0,16,0"
+                                    Visibility="{Binding ElementName=TglSplitPosition, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}">
+
+                            <!-- - -->
+                            <Button x:Name="BtnSplitMinus" Style="{StaticResource CircleButtonStyle}"
+                                    Click="BtnSplitMinus_Click">
+                                <TextBlock Text="−" FontSize="12" Margin="0,-1,0,0" Foreground="#666"/>
+                            </Button>
+
+                            <!-- Slider -->
+                            <Grid Width="110" Height="20" VerticalAlignment="Center" Margin="8,0">
+                                <Slider x:Name="SliderSplitPosition" Minimum="10" Maximum="100" Value="10"
+                                        TickFrequency="10" IsSnapToTickEnabled="True"
+                                        VerticalAlignment="Center">
+                                    <Slider.Template>
+                                        <ControlTemplate TargetType="Slider">
+                                            <Grid ClipToBounds="False" VerticalAlignment="Center">
+                                                <Border Height="4" CornerRadius="2" Background="#E0E0E0" VerticalAlignment="Center"/>
+                                                <Track x:Name="PART_Track" VerticalAlignment="Center" ClipToBounds="False">
+                                                    <Track.DecreaseRepeatButton>
+                                                        <RepeatButton Command="Slider.DecreaseLarge" 
+                                                                      Style="{StaticResource SliderRepeatButtonStyle}" 
+                                                                      Background="#2E5BFF"/>
+                                                    </Track.DecreaseRepeatButton>
+                                                    <Track.IncreaseRepeatButton>
+                                                        <RepeatButton Command="Slider.IncreaseLarge" 
+                                                                      Style="{StaticResource SliderRepeatButtonStyle}" 
+                                                                      Background="Transparent"/>
+                                                    </Track.IncreaseRepeatButton>
+                                                    <Track.Thumb>
+                                                        <Thumb Width="14" Height="14" Cursor="Hand" ClipToBounds="False">
+                                                            <Thumb.Template>
+                                                                <ControlTemplate TargetType="Thumb">
+                                                                    <Ellipse Fill="#2E5BFF"/>
+                                                                </ControlTemplate>
+                                                            </Thumb.Template>
+                                                        </Thumb>
+                                                    </Track.Thumb>
+                                                </Track>
+                                            </Grid>
+                                        </ControlTemplate>
+                                    </Slider.Template>
+                                </Slider>
+                            </Grid>
+
+                            <!-- + -->
+                            <Button x:Name="BtnSplitPlus" Style="{StaticResource CircleButtonStyle}"
+                                    Click="BtnSplitPlus_Click">
+                                <TextBlock Text="+" FontSize="12" Margin="0,-1,0,0" Foreground="#666"/>
+                            </Button>
+
+                            <!-- X% -->
+                            <TextBlock FontSize="14" VerticalAlignment="Center" Margin="10,0,0,0">
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}{0:F0}%">
+                                        <Binding ElementName="SliderSplitPosition" Path="Value"/>
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </StackPanel>
                     </DockPanel>
 
                     <!-- 市场类型 + 训练时间段 -->
@@ -307,11 +419,80 @@
                     </Grid>
 
                     <!-- 自动卖出 -->
+                    <!-- 自动卖出 -->
                     <DockPanel Margin="0,0,14,14">
                         <TextBlock Text="自动卖出" FontSize="14" VerticalAlignment="Center"/>
+
+                        <!-- 开关：最右侧 -->
                         <ToggleButton x:Name="TglAutoSell" DockPanel.Dock="Right"
                                       Style="{StaticResource MaterialDesignSwitchToggleButton}"
-                                      Width="45" Height="25" Margin="-136,0,0,0" Background="#FF2E5BFF"/>
+                                      Width="45" Height="25" Background="#FF2E5BFF"/>
+
+                        <!-- 滑块区域：开关左侧，打开时显示 -->
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                                    VerticalAlignment="Center" Margin="280,0,16,0"
+                                    Visibility="{Binding ElementName=TglAutoSell, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}">
+
+                            <!-- - -->
+                            <Button x:Name="BtnAutoSellMinus" Style="{StaticResource CircleButtonStyle}"
+                                    Click="BtnAutoSellMinus_Click">
+                                <TextBlock Text="−" FontSize="12" Margin="0,-1,0,0" Foreground="#666"/>
+                            </Button>
+
+                            <!-- Slider：灰色轨道 + 蓝色圆点 -->
+                            <!-- Slider：灰色轨道 + 蓝色圆点 -->
+                            <Grid Width="110" Height="26" VerticalAlignment="Center" Margin="8,0">
+                                <Slider x:Name="SliderAutoSell" Minimum="1" Maximum="150" Value="10"
+                                        TickFrequency="1" IsSnapToTickEnabled="True"
+                                        VerticalAlignment="Center">
+                                    <Slider.Template>
+                                        <ControlTemplate TargetType="Slider">
+                                            <Grid ClipToBounds="False" VerticalAlignment="Center">
+                                                <!-- 灰色背景轨道 -->
+                                                <Border Height="4" CornerRadius="2" Background="#E0E0E0" VerticalAlignment="Center"/>
+                                                <Track x:Name="PART_Track" VerticalAlignment="Center" ClipToBounds="False">
+                                                    <Track.DecreaseRepeatButton>
+                                                        <RepeatButton Command="Slider.DecreaseLarge" 
+                                                                      Style="{StaticResource SliderRepeatButtonStyle}" 
+                                                                      Background="#2E5BFF"/>
+                                                    </Track.DecreaseRepeatButton>
+                                                    <Track.IncreaseRepeatButton>
+                                                        <RepeatButton Command="Slider.IncreaseLarge" 
+                                                                      Style="{StaticResource SliderRepeatButtonStyle}" 
+                                                                      Background="Transparent"/>
+                                                    </Track.IncreaseRepeatButton>
+                                                    <Track.Thumb>
+                                                        <Thumb Width="15" Height="15" Cursor="Hand" ClipToBounds="False">
+                                                            <Thumb.Template>
+                                                                <ControlTemplate TargetType="Thumb">
+                                                                    <Ellipse Fill="#2E5BFF" />
+                                                                </ControlTemplate>
+                                                            </Thumb.Template>
+                                                        </Thumb>
+                                                    </Track.Thumb>
+                                                </Track>
+                                            </Grid>
+                                        </ControlTemplate>
+                                    </Slider.Template>
+                                </Slider>
+                            </Grid>
+
+                            <!-- + -->
+                            <Button x:Name="BtnAutoSellPlus" Style="{StaticResource CircleButtonStyle}"
+                                    Click="BtnAutoSellPlus_Click">
+                                <TextBlock Text="+" FontSize="12" Margin="0,-1,0,0" Foreground="#666"/>
+                            </Button>
+
+                            <!-- X 天 -->
+                            <TextBlock FontSize="14" VerticalAlignment="Center" Margin="10,0,0,0">
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}{0:F0}">
+                                        <Binding ElementName="SliderAutoSell" Path="Value"/>
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                            <TextBlock Text="天" FontSize="14" VerticalAlignment="Center" Margin="2,0,0,0"/>
+                        </StackPanel>
                     </DockPanel>
 
                     <!-- 去除ST + 买卖自动跳 -->
