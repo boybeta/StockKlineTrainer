@@ -1,0 +1,31 @@
+{
+    // 强制 OmniSharp 使用现代 .NET 加载器（对 net8.0-windows/WPF 更友好）
+    "omnisharp.useModernNet": true,
+
+    // 开启 Roslyn 分析器，提高诊断准确性
+    "omnisharp.enableRoslynAnalyzers": true,
+
+    // 支持 .editorconfig，使代码风格/诊断配置生效
+    "omnisharp.enableEditorConfigSupport": true,
+
+    // 延长项目加载超时，WPF 项目较大时避免加载失败
+    "omnisharp.projectLoadTimeout": 120,
+
+    // 分析所有文档，而不仅是当前打开的文件
+    "omnisharp.analyzeOpenDocumentsOnly": false,
+
+    // 抑制隐藏诊断，减少 XAML 生成代码相关的误报
+    "csharp.semanticHighlighting.enabled": true,
+    "csharp.suppressHiddenDiagnostics": true,
+
+    // 若你同时安装了 C# Dev Kit，可强制使用 OmniSharp 作为语言服务器
+    // 如希望使用 C# Dev Kit 的 Roslyn LSP，请删除或注释掉下一行
+    "dotnet.server.useOmnisharp": true,
+
+    // C# 默认格式化器
+    "[csharp]": {
+        "editor.defaultFormatter": "ms-dotnettools.csharp"
+    },
+    "dotnet.defaultSolution": "",
+    "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true
+}

@@ -183,8 +183,10 @@
 
                         <!-- 开关：最右侧 -->
                         <ToggleButton x:Name="TglSplitPosition" DockPanel.Dock="Right"
-                                      Style="{StaticResource MaterialDesignSwitchToggleButton}"
-                                      Width="45" Height="25" Background="#FF2E5BFF"/>
+              Checked="TglSplitPosition_Checked"
+              Unchecked="TglSplitPosition_Unchecked"
+              Style="{StaticResource MaterialDesignSwitchToggleButton}"
+              Width="45" Height="25" Background="#FF2E5BFF"/>
 
                         <!-- 滑块区域：开关左侧，打开时显示 -->
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
@@ -200,8 +202,9 @@
                             <!-- Slider -->
                             <Grid Width="110" Height="20" VerticalAlignment="Center" Margin="8,0">
                                 <Slider x:Name="SliderSplitPosition" Minimum="10" Maximum="100" Value="10"
-                                        TickFrequency="10" IsSnapToTickEnabled="True"
-                                        VerticalAlignment="Center">
+        TickFrequency="10" IsSnapToTickEnabled="True"
+        ValueChanged="SliderSplitPosition_ValueChanged"
+        VerticalAlignment="Center">
                                     <Slider.Template>
                                         <ControlTemplate TargetType="Slider">
                                             <Grid ClipToBounds="False" VerticalAlignment="Center">
@@ -260,24 +263,24 @@
 
                         <Border Grid.Column="0" Background="#F8F9FB" CornerRadius="10" Padding="14">
                             <StackPanel>
-                                <TextBlock Text="市场类型" FontSize="12" Foreground="#999" Margin="0,0,0,8"/>
+                                <TextBlock Text="市场类型" FontSize="14" Foreground="#999" Margin="0,0,0,8"/>
                                 <UniformGrid Columns="4" Rows="1">
-                                    <ToggleButton Content="不限"   Style="{StaticResource ChipToggleStyle}" IsChecked="True" Margin="1"/>
-                                    <ToggleButton Content="主板"   Style="{StaticResource ChipToggleStyle}" Margin="1"/>
-                                    <ToggleButton Content="创业板" Style="{StaticResource ChipToggleStyle}" Margin="1"/>
-                                    <ToggleButton Content="科创板" Style="{StaticResource ChipToggleStyle}" Margin="1"/>
+                                    <RadioButton Content="不限"   Style="{StaticResource ChipRadioStyle}" GroupName="MarketGroup" IsChecked="True" Margin="1"/>
+                                    <RadioButton Content="主板"   Style="{StaticResource ChipRadioStyle}" GroupName="MarketGroup" Margin="1"/>
+                                    <RadioButton Content="创业板" Style="{StaticResource ChipRadioStyle}" GroupName="MarketGroup" Margin="1"/>
+                                    <RadioButton Content="科创板" Style="{StaticResource ChipRadioStyle}" GroupName="MarketGroup" Margin="1"/>
                                 </UniformGrid>
                             </StackPanel>
                         </Border>
 
                         <Border Grid.Column="2" Background="#F8F9FB" CornerRadius="10" Padding="14">
                             <StackPanel>
-                                <TextBlock Text="训练时间段" FontSize="12" Foreground="#999" Margin="0,0,0,8"/>
+                                <TextBlock Text="训练时间段" FontSize="14" Foreground="#999" Margin="0,0,0,8"/>
                                 <UniformGrid Columns="4" Rows="1">
-                                    <ToggleButton Content="不限"    Style="{StaticResource ChipToggleStyle}" IsChecked="True" Margin="1"/>
-                                    <ToggleButton Content="最近5年" Style="{StaticResource ChipToggleStyle}" Margin="1"/>
-                                    <ToggleButton Content="最近10年" Style="{StaticResource ChipToggleStyle}" Margin="1"/>
-                                    <ToggleButton Content="10年前"  Style="{StaticResource ChipToggleStyle}" Margin="1"/>
+                                    <RadioButton Content="不限"    Style="{StaticResource ChipRadioStyle}" GroupName="PeriodGroup" IsChecked="True" Margin="1"/>
+                                    <RadioButton Content="最近5年" Style="{StaticResource ChipRadioStyle}" GroupName="PeriodGroup" Margin="1"/>
+                                    <RadioButton Content="近10年" Style="{StaticResource ChipRadioStyle}" GroupName="PeriodGroup" Margin="1"/>
+                                    <RadioButton Content="10年前"  Style="{StaticResource ChipRadioStyle}" GroupName="PeriodGroup" Margin="1"/>
                                 </UniformGrid>
                             </StackPanel>
                         </Border>
@@ -314,7 +317,7 @@
 
                         <ToggleButton x:Name="TglLeverage" DockPanel.Dock="Right" VerticalAlignment="Center"
                                       Style="{StaticResource MaterialDesignSwitchToggleButton}"
-                                      Width="45" Height="25" Margin="0,0,-70,0" Background="#FF2E5BFF"/>
+                                      Width="45" Height="25" Margin="0,0,-62,0" Background="#FF2E5BFF"/>
                     </DockPanel>
 
                     <!-- 周月按日跳 + 开盘买入 -->
@@ -507,7 +510,7 @@
                             <DockPanel>
                                 <ToggleButton x:Name="TglRemoveST" DockPanel.Dock="Right"
                                               Style="{StaticResource MaterialDesignSwitchToggleButton}"
-                                              Width="45" Height="25" Margin="-83,0,0,0"/>
+                                              Width="45" Height="25" Background="#FF2E5BFF" Margin="0,0,22,0"/>
                                 <TextBlock Text="去除 ST" FontSize="14" VerticalAlignment="Center"/>
                             </DockPanel>
                         </Border>

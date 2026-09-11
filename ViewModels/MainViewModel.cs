@@ -25,6 +25,14 @@ namespace BaozhuKLineTrainer
         public string Profit { get; set; } = "";
     }
 
+    public class SplitBuyItem
+    {
+        public int Index { get; set; }
+        public string Text { get; set; } = "";
+        public int Percent { get; set; }
+    }
+
+
     public class MainViewModel : INotifyPropertyChanged
     {
         private readonly DatabaseService _dbService;
@@ -35,7 +43,9 @@ namespace BaozhuKLineTrainer
         private bool _isTrainingMode = false;
         private bool _isAnswerRevealed = false;
         private bool _isInitializing = true;
+
         private readonly Random _random = new Random();
+        private readonly TrainingConfig _config;
 
         // ===== 十字光标 =====
         private ScottPlot.Plottables.VerticalLine? _klineVLine;
@@ -86,6 +96,64 @@ namespace BaozhuKLineTrainer
 
         // ===== 操作流水 =====
         public ObservableCollection<TradeRecord> TradeRecords { get; } = new();
+
+        public ObservableCollection<SplitBuyItem> SplitBuyItems { get; } = new();
+        public bool IsSplitMode => _config?.IsSplitPosition == true;
+        public bool IsNormalMode => !IsSplitMode;
+        private bool _isBuyOptionsVisible;
+        public bool IsBuyOptionsVisible
+        {
+            get => _isBuyOptionsVisible;
+            set { _isBuyOptionsVisible = value; OnPropertyChanged(); }
+        }
+
+        public ObservableCollection<SplitBuyItem> SplitSellItems { get; } = new();
+
+        private bool _isSellOptionsVisible;
+        public bool IsSellOptionsVisible
+        {
+            get => _isSellOptionsVisible;
+            set { _isSellOptionsVisible = value; OnPropertyChanged(); }
+        }
+        public ICommand SplitBuyCommand { get; }
+        public ICommand SplitSellCommand { get; }
+
+        public ICommand TogglePlayCommand { get; }
+        public ICommand PlaySpeedCommand { get; }
+
+        // ===== 自动播放 =====
+        private DispatcherTimer? _playTimer;
+        private bool _isPlaying = false;
+        private double _playSpeed = 1.0;
+
+        public bool IsPlaying
+        {
+            get => _isPlaying;
+            set { _isPlaying = value; OnPropertyChanged(); OnPropertyChanged(nameof(PlayBtnText)); }
+        }
+
+        public string PlayBtnText => _isPlaying ? "暂停" : "自动播放";
+
+        public double PlaySpeed
+        {
+            get => _playSpeed;
+            set
+            {
+                _playSpeed = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsSpeed05x));
+                OnPropertyChanged(nameof(IsSpeed1x));
+                OnPropertyChanged(nameof(IsSpeed2x));
+                OnPropertyChanged(nameof(IsSpeed4x));
+                if (_playTimer != null)   // 播放中换档立即生效
+                    _playTimer.Interval = TimeSpan.FromMilliseconds(1000.0 / value);
+            }
+        }
+
+        public bool IsSpeed05x => Math.Abs(_playSpeed - 0.5) < 0.001;
+        public bool IsSpeed1x => Math.Abs(_playSpeed - 1.0) < 0.001;
+        public bool IsSpeed2x => Math.Abs(_playSpeed - 2.0) < 0.001;
+        public bool IsSpeed4x => Math.Abs(_playSpeed - 4.0) < 0.001;
 
         // ===== 顶部信息栏绑定属性 =====
         private double _currentPrice;
@@ -251,7 +319,28 @@ namespace BaozhuKLineTrainer
         public int HeavyHoldDays => _heavyHoldDays;
         public string ElapsedText => $"{(int)_elapsed.TotalSeconds}s";
 
-        public string BuyBtnSubText => !_hasPosition ? "可买1/1仓" : "无仓位可买";
+        public string BuyBtnSubText
+        {
+            get
+            {
+                // 分仓模式：根据剩余额度显示
+                if (_config != null && _config.IsSplitPosition)
+                {
+                    double maxRatio = _config.SplitPositionPercent / 100.0;
+                    double usedRatio = _holdBuyAmount / _initialFirecrackers;
+                    int remainingTenths = (int)Math.Floor((maxRatio - usedRatio) * 10);
+                    remainingTenths = Math.Max(0, remainingTenths);
+
+                    if (remainingTenths <= 0) return "无仓位可买";
+                    return $"可买{remainingTenths}/10仓";
+                }
+
+                // 非分仓模式
+                if (_hasPosition) return "无仓位可买";
+                return "可买10/10仓";
+            }
+        }
+
         public string SellBtnSubText
         {
             get
@@ -289,8 +378,9 @@ namespace BaozhuKLineTrainer
             return new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x99, 0x99, 0x99));
         }
 
-        public MainViewModel()
+        public MainViewModel(TrainingConfig config)
         {
+            _config = config;
             string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "stockdata", "cy_stock.db");
             _dbService = new DatabaseService(dbPath);
 
@@ -304,11 +394,31 @@ namespace BaozhuKLineTrainer
             BuyCommand = new RelayCommand(_ => ExecuteBuy(), _ => CanBuy());
             SellCommand = new RelayCommand(_ => ExecuteSell(), _ => CanSell());
             SettleCommand = new RelayCommand(_ => ExecuteSettle(), _ => _isTrainingMode);
+            SplitBuyCommand = new RelayCommand(p =>
+            {
+                if (p is int percent) ExecuteSplitBuy(percent);
+            }, _ => CanBuy());
+
+            SplitSellCommand = new RelayCommand(p =>
+            {
+                if (p is int percent) ExecuteSplitSell(percent);
+            }, _ => CanSell());
+
+            TogglePlayCommand = new RelayCommand(_ => TogglePlay(), _ => CanTogglePlay());
+            PlaySpeedCommand = new RelayCommand(p =>
+            {
+                if (p is string s && double.TryParse(s, out double v)) PlaySpeed = v;
+            });
+
+            RebuildSellItems();
 
             LoadStockList();
             _currentVisibleBars = _trainingBars;
 
             _cash = _initialFirecrackers;
+            // 初始化分仓档位按钮（如50% → 1成~5成共5个按钮）
+            IsBuyOptionsVisible = false;
+            RebuildBuyItems();
 
             _isInitializing = false;
 
@@ -316,6 +426,57 @@ namespace BaozhuKLineTrainer
             {
                 LoadRandomStock();
             }
+        }
+
+        private bool CanSell() =>
+    _isTrainingMode &&
+    !_isAnswerRevealed &&
+    _hasPosition &&
+    _buyBarIndex >= 0 &&
+    _currentVisibleBars > _buyBarIndex + 1;   // T+1：买入当天不可卖
+
+        private void ExecuteSell()
+        {
+            if (!CanSell()) return;
+
+            // 分仓模式：S = 展开/收起卖出档位面板
+            if (_config.IsSplitPosition)
+            {
+                IsBuyOptionsVisible = false;
+                IsSellOptionsVisible = !IsSellOptionsVisible;
+                return;
+            }
+
+            // ===== 非分仓模式：一次性全仓卖出 =====
+            double price = GetCurrentPrice();
+            if (price <= 0 || !_avgCostPrice.HasValue) return;
+
+            double marketValue = _holdBuyAmount * (price / _avgCostPrice.Value);
+            double fee = marketValue * FeeRate;
+            double profit = marketValue - _holdBuyAmount - fee - (_holdBuyAmount * FeeRate);
+
+            _cash += marketValue - fee;
+            _closedProfitAmount += profit;
+            _closedCostAmount += _holdBuyAmount;
+            if (profit > 0) _profitCount++;
+
+            _tradeMarkers.Add(new TradeMarker { BarIndex = _currentVisibleBars - 1, Type = "S" });
+
+            TradeRecords.Insert(0, new TradeRecord
+            {
+                Type = "卖出",
+                Date = GetCurrentDate(),
+                Price = price,
+                Profit = ((price - _avgCostPrice.Value) / _avgCostPrice.Value * 100).ToString("F2") + "%"
+            });
+
+            _holdBuyAmount = 0;
+            _avgCostPrice = null;
+            _buyBarIndex = -1;
+
+            NotifyAllStats();
+            UpdatePriceChart();
+            CommandManager.InvalidateRequerySuggested();
         }
 
         private void LoadStockList()
@@ -1033,6 +1194,7 @@ namespace BaozhuKLineTrainer
         {
             if ((DateTime.Now - _lastToggleTime).TotalMilliseconds < 500) return;
             _lastToggleTime = DateTime.Now;
+            StopPlay();
 
             _isTrainingMode = !_isTrainingMode;
             _isAnswerRevealed = false;
@@ -1082,6 +1244,7 @@ namespace BaozhuKLineTrainer
             _isAnswerRevealed = true;
             TrainingStatus = "答案已揭示";
             StopTimer();
+            StopPlay();
             UpdatePriceChart();
             UpdateVolChart();
             UpdateMacdChart();
@@ -1143,23 +1306,69 @@ namespace BaozhuKLineTrainer
             }
         }
 
-        private bool CanBuy() => _isTrainingMode && !_isAnswerRevealed && !_hasPosition && _currentVisibleBars < _totalBars;
+        private bool CanBuy()
+        {
+            if (!_isTrainingMode || _isAnswerRevealed || _currentVisibleBars >= _totalBars)
+                return false;
+
+            // 非分仓模式：无持仓才能买
+            if (!_config.IsSplitPosition)
+                return !_hasPosition;
+
+            // 分仓模式：只要没买到上限，就可以继续买
+            double maxAmount = _initialFirecrackers * (_config.SplitPositionPercent / 100.0);
+            return _holdBuyAmount < maxAmount - 0.01; // 留 1分钱容差
+        }
 
         private void ExecuteBuy()
+        {
+            IsSellOptionsVisible = false;
+            IsBuyOptionsVisible = !IsBuyOptionsVisible;
+        }
+
+        private void ExecuteSplitBuy(int percent)
         {
             if (!CanBuy()) return;
 
             double price = GetCurrentPrice();
             if (price <= 0) return;
 
-            double buyAmount = _cash / (1 + FeeRate);
+            // 计算本次实际可买比例（基于初始资金，防止超仓）
+            double wantRatio = percent / 100.0;
+            double maxTotalRatio = _config.SplitPositionPercent / 100.0;
+            double currentUsedRatio = _holdBuyAmount / _initialFirecrackers;
+            double remainingRatio = maxTotalRatio - currentUsedRatio;
+
+            double actualRatio = Math.Min(wantRatio - currentUsedRatio, remainingRatio);
+            if (actualRatio <= 0) return;
+
+            double allocatedCash = _initialFirecrackers * actualRatio;
+            if (allocatedCash > _cash) allocatedCash = _cash; // 不能超过剩余现金
+            if (allocatedCash <= 0) return;
+
+            double buyAmount = allocatedCash / (1 + FeeRate);
             double fee = buyAmount * FeeRate;
 
-            _holdBuyAmount = buyAmount;
-            _avgCostPrice = price;
+            bool wasEmpty = !_hasPosition;
+
+            // 累加持仓 & 计算加权平均成本
+            if (_hasPosition && _avgCostPrice.HasValue)
+            {
+                double totalAmount = _holdBuyAmount + buyAmount;
+                _avgCostPrice = (_holdBuyAmount * _avgCostPrice.Value + buyAmount * price) / totalAmount;
+                _holdBuyAmount = totalAmount;
+            }
+            else
+            {
+                _holdBuyAmount = buyAmount;
+                _avgCostPrice = price;
+            }
+
             _buyBarIndex = _currentVisibleBars;
-            _cash = 0;
-            _openCount++;
+            _cash -= allocatedCash;
+
+            if (wasEmpty) _openCount++;
+
             _tradeMarkers.Add(new TradeMarker { BarIndex = _currentVisibleBars - 1, Type = "B" });
 
             TradeRecords.Insert(0, new TradeRecord
@@ -1172,44 +1381,116 @@ namespace BaozhuKLineTrainer
 
             NotifyAllStats();
             CommandManager.InvalidateRequerySuggested();
+            RebuildBuyItems();
+            RebuildSellItems();
+            IsBuyOptionsVisible = false;
         }
 
-        private bool CanSell() => _isTrainingMode && !_isAnswerRevealed && _hasPosition && _currentVisibleBars > _buyBarIndex + 1;
+        // ===== 根据当前持仓动态生成买入档位（只显示还没买到的档）=====
+        private void RebuildBuyItems()
+        {
+            SplitBuyItems.Clear();
+            if (!_config.IsSplitPosition) return;
 
-        private void ExecuteSell()
+            int maxTenths = _config.SplitPositionPercent / 10;
+            int currentTenths = (int)Math.Round(_holdBuyAmount / _initialFirecrackers * 10);
+            currentTenths = Math.Max(0, Math.Min(currentTenths, maxTenths));
+
+            // 例：上限 10 成、当前 5/10 → 只生成 [加至6/10 ... 加至满仓] 共 5 行
+            for (int i = currentTenths + 1; i <= maxTenths; i++)
+            {
+                SplitBuyItems.Add(new SplitBuyItem
+                {
+                    Index = i - currentTenths,
+                    Text = i == 10 ? "加至满仓" : $"加至{i}/10仓",
+                    Percent = i * 10
+                });
+            }
+        }
+
+        // ===== 根据当前持仓动态生成卖出档位 =====
+        private void RebuildSellItems()
+        {
+            SplitSellItems.Clear();
+            if (!_config.IsSplitPosition) return;
+
+            int currentTenths = (int)Math.Round(_holdBuyAmount / _initialFirecrackers * 10);
+            currentTenths = Math.Max(0, Math.Min(currentTenths, 10));
+
+            for (int i = currentTenths - 1; i >= 1; i--)
+            {
+                SplitSellItems.Add(new SplitBuyItem
+                {
+                    Index = currentTenths - i,
+                    Text = $"减至{i}/10仓",
+                    Percent = i * 10
+                });
+            }
+
+            if (currentTenths > 0)
+            {
+                SplitSellItems.Add(new SplitBuyItem
+                {
+                    Index = currentTenths,
+                    Text = "清仓",
+                    Percent = 0
+                });
+            }
+        }
+
+        // ===== 分档卖出：percent = 目标持仓档位（0 = 清仓）=====
+        private void ExecuteSplitSell(int percent)
         {
             if (!CanSell()) return;
 
             double price = GetCurrentPrice();
-            if (price <= 0 || !_avgCostPrice.HasValue) return;
+            if (price <= 0 || !_avgCostPrice.HasValue || !_hasPosition) return;
 
-            double marketValue = _holdBuyAmount * (price / _avgCostPrice.Value);
-            double fee = marketValue * FeeRate;
-            double netCash = marketValue - fee;
-            double profit = marketValue - _holdBuyAmount - (_holdBuyAmount * FeeRate) - fee;
             double profitPct = (price - _avgCostPrice.Value) / _avgCostPrice.Value * 100;
 
-            _cash = netCash;
-            _tradeMarkers.Add(new TradeMarker { BarIndex = _currentVisibleBars - 1, Type = "S" });
-            _closedProfitAmount += profit;
-            _closedCostAmount += _holdBuyAmount;
+            double targetAmount = Math.Max(0, Math.Min(
+                _initialFirecrackers * (percent / 100.0), _holdBuyAmount));
+            double sellAmount = _holdBuyAmount - targetAmount;
+            if (sellAmount <= 0.01) { IsSellOptionsVisible = false; return; }
 
+            double totalMarketValue = _holdBuyAmount * (price / _avgCostPrice.Value);
+            double sellMarketValue = totalMarketValue * (sellAmount / _holdBuyAmount);
+            double fee = sellMarketValue * FeeRate;
+            double profit = sellMarketValue - sellAmount - fee - (sellAmount * FeeRate);
+
+            _cash += sellMarketValue - fee;
+            _closedProfitAmount += profit;
+            _closedCostAmount += sellAmount;
             if (profit > 0) _profitCount++;
+
+            if (targetAmount <= 0.01)
+            {
+                _holdBuyAmount = 0;
+                _avgCostPrice = null;
+                _buyBarIndex = -1;
+                IsSellOptionsVisible = false;
+            }
+            else
+            {
+                _holdBuyAmount = targetAmount;
+            }
+
+            _tradeMarkers.Add(new TradeMarker { BarIndex = _currentVisibleBars - 1, Type = "S" });
 
             TradeRecords.Insert(0, new TradeRecord
             {
-                Type = "卖出",
+                Type = targetAmount <= 0.01 ? "卖出(清仓)" : "卖出",
                 Date = GetCurrentDate(),
                 Price = price,
                 Profit = profitPct.ToString("F2") + "%"
             });
 
-            _holdBuyAmount = 0;
-            _avgCostPrice = null;
-            _buyBarIndex = -1;
-
+            RebuildBuyItems();
+            RebuildSellItems();
             NotifyAllStats();
+            UpdatePriceChart();
             CommandManager.InvalidateRequerySuggested();
+            IsSellOptionsVisible = false;
         }
 
         private void ExecuteSettle()
@@ -1223,7 +1504,7 @@ namespace BaozhuKLineTrainer
                     double fee = marketValue * FeeRate;
                     double profit = marketValue - _holdBuyAmount - fee - (_holdBuyAmount * FeeRate);
 
-                    _cash = marketValue - fee;
+                    _cash += marketValue - fee;
                     _closedProfitAmount += profit;
                     _closedCostAmount += _holdBuyAmount;
                     if (profit > 0) _profitCount++;
@@ -1241,6 +1522,7 @@ namespace BaozhuKLineTrainer
             }
 
             StopTimer();
+            StopPlay();
             _isAnswerRevealed = true;
             TrainingStatus = "训练已结算";
             UpdatePriceChart();
@@ -1270,6 +1552,48 @@ namespace BaozhuKLineTrainer
             return _currentDataList[idx].Date.ToString("yyyy-MM-dd");
         }
 
+        private bool CanTogglePlay()
+        {
+            if (_isPlaying) return true;   // 播放中随时可以暂停
+            return _isTrainingMode && !_isAnswerRevealed && _currentVisibleBars < _totalBars;
+        }
+
+        private void TogglePlay()
+        {
+            if (_isPlaying) { StopPlay(); return; }
+            StartPlay();
+        }
+
+        private void StartPlay()
+        {
+            if (!_isTrainingMode || _isAnswerRevealed || _currentVisibleBars >= _totalBars) return;
+
+            _playTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1000.0 / PlaySpeed) };
+            _playTimer.Tick += PlayTimer_Tick;
+            _playTimer.Start();
+            IsPlaying = true;
+            CommandManager.InvalidateRequerySuggested();
+        }
+
+        private void StopPlay()
+        {
+            _playTimer?.Stop();
+            _playTimer = null;
+            IsPlaying = false;
+            CommandManager.InvalidateRequerySuggested();
+        }
+
+        // 每次 Tick = 自动点一次"持有/观望"，交易仍可手动操作
+        private void PlayTimer_Tick(object? sender, EventArgs e)
+        {
+            if (_isAnswerRevealed || _currentVisibleBars >= _totalBars)
+            {
+                StopPlay();
+                return;
+            }
+            OnHoldOrWatch();
+        }
+
         private void StartTimer()
         {
             _trainingStartTime = DateTime.Now;
@@ -1294,6 +1618,7 @@ namespace BaozhuKLineTrainer
 
         private void ResetTrainingStats()
         {
+            StopPlay();
             _cash = _initialFirecrackers;
             _holdBuyAmount = 0;
             _avgCostPrice = null;
@@ -1308,6 +1633,10 @@ namespace BaozhuKLineTrainer
             _elapsed = TimeSpan.Zero;
             TradeRecords.Clear();
             _tradeMarkers.Clear();
+            IsBuyOptionsVisible = false;
+            IsSellOptionsVisible = false;
+            RebuildBuyItems();
+            RebuildSellItems();
             NotifyAllStats();
         }
 

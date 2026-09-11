@@ -17,9 +17,21 @@ namespace BaozhuKLineTrainer
             this.Close();
         }
 
+        private TrainingConfig CollectConfig()
+        {
+            var config = new TrainingConfig();
+
+            // 当前只收集分仓配置，后续每加一个功能就在这里加一行
+            config.IsSplitPosition = TglSplitPosition.IsChecked == true;
+            config.SplitPositionPercent = (int)SliderSplitPosition.Value;
+
+            return config;
+        }
+
         private void StartTraining_Click(object sender, RoutedEventArgs e)
         {
-            KLineTrainWindow kLineWin = new KLineTrainWindow();
+            var config = CollectConfig();
+            KLineTrainWindow kLineWin = new KLineTrainWindow(config);
             kLineWin.Show();
             Application.Current.MainWindow = kLineWin;
             this.Close();
@@ -91,5 +103,24 @@ namespace BaozhuKLineTrainer
             if (SliderSplitPosition.Value < SliderSplitPosition.Maximum)
                 SliderSplitPosition.Value += 10;
         }
+
+        // ========== 分仓模式与爆竹比例联动 ==========
+
+        private void TglSplitPosition_Checked(object sender, RoutedEventArgs e)
+        {
+            TxtFirecrackerRatio.Text = ((int)SliderSplitPosition.Value).ToString();
+        }
+
+        private void TglSplitPosition_Unchecked(object sender, RoutedEventArgs e)
+        {
+            TxtFirecrackerRatio.Text = "100";
+        }
+
+        private void SliderSplitPosition_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (TglSplitPosition.IsChecked == true)
+                TxtFirecrackerRatio.Text = ((int)SliderSplitPosition.Value).ToString();
+        }
+
     }
 }

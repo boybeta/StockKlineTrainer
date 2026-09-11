@@ -5,7 +5,6 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:scottplot="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
         mc:Ignorable="d"
-        
         Width="1400"
         Height="900"
         ResizeMode="NoResize"
@@ -54,6 +53,8 @@
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderBrush" Value="#E91E63"/>
         </Style>
+
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
     </Window.Resources>
 
     <Grid>
@@ -63,36 +64,28 @@
         </Grid.ColumnDefinitions>
 
         <!-- ==================== 左侧主区域 ==================== -->
-        <!-- ← 改动1：固定宽度1050，左对齐 -->
         <Grid Grid.Column="0" Margin="10,10,5,10" Width="1040" HorizontalAlignment="Left">
             <Grid.RowDefinitions>
                 <RowDefinition Height="42"/>
                 <RowDefinition Height="48"/>
                 <RowDefinition Height="38"/>
                 <RowDefinition Height="500"/>
-                <!-- ← 改动2：K线主图固定500px -->
                 <RowDefinition Height="100"/>
-                <!-- ← 改动3：VOL固定100px -->
                 <RowDefinition Height="100"/>
-                <!-- ← 改动4：MACD固定100px -->
             </Grid.RowDefinitions>
 
-            <!-- 1. 标题栏 -->
             <!-- 1. 标题栏 -->
             <Border Grid.Row="0" Background="White" CornerRadius="6" Margin="0,0,0,6">
                 <DockPanel VerticalAlignment="Center">
                     <Image Source="pack://application:,,,/Images/logo.png" Height="32" Margin="10,0"/>
                     <TextBlock Text="爆竹K线训练" FontSize="16" FontWeight="Bold"
-                   VerticalAlignment="Center" Margin="8,0"/>
+                               VerticalAlignment="Center" Margin="8,0"/>
                 </DockPanel>
             </Border>
 
-
-            <!-- 2. 股票信息栏 -->
-            <!-- 2. 股票信息栏 -->
             <!-- 2. 股票信息栏 -->
             <Border Grid.Row="1" Background="White" CornerRadius="6" Margin="0,0,0,6"
-        BorderBrush="#DDD" BorderThickness="1">
+                    BorderBrush="#DDD" BorderThickness="1">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="10"/>
@@ -116,13 +109,12 @@
                         <ColumnDefinition Width="95"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- 第1列：状态 -->
+                    <!-- 状态 -->
                     <StackPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="12,0,0,0">
                         <TextBlock Text="进行中" FontSize="12" Foreground="#E91E63" FontWeight="Bold"/>
                         <TextBlock Text="股票" FontSize="11" Foreground="#999" Margin="0,2,0,0"/>
                     </StackPanel>
 
-                    <!-- 粉色分隔线 -->
                     <Border Grid.Column="1" Background="#999" Width="1" Margin="0,0"/>
 
                     <!-- 现价 -->
@@ -216,57 +208,53 @@
             </Border>
 
             <!-- 4. K线主图 -->
-            <!-- ← 改动5：去掉底部Margin，与VOL紧密相连 -->
-            <!-- 4. K线主图 -->
             <Border Grid.Row="3" Background="White" CornerRadius="6" Margin="0,0,0,0"
-        BorderBrush="#DDD" BorderThickness="1">
+                    BorderBrush="#DDD" BorderThickness="1">
                 <Grid>
-                    <!-- 左上角指标文字（浮在K线图内部左上角） -->
+                    <!-- 左上角指标文字 -->
                     <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,26" Panel.ZIndex="1">
                         <TextBlock FontSize="11">
-                <Run Text="MA(5,10,20)  " Foreground="#999"/>
-                <Run Text="MA5:" Foreground="#999"/>
-                <Run Text="{Binding MA5Value, FallbackValue=--}" Foreground="#FFD700" FontWeight="Bold"/>
-                <Run Text=" " Foreground="#999"/>
-                <Run Text="MA10:" Foreground="#999"/>
-                <Run Text="{Binding MA10Value, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
-                <Run Text=" " Foreground="#999"/>
-                <Run Text="MA20:" Foreground="#999"/>
-                <Run Text="{Binding MA20Value, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
+                            <Run Text="MA(5,10,20)  " Foreground="#999"/>
+                            <Run Text="MA5:" Foreground="#999"/>
+                            <Run Text="{Binding MA5Value, FallbackValue=--}" Foreground="#FFD700" FontWeight="Bold"/>
+                            <Run Text=" " Foreground="#999"/>
+                            <Run Text="MA10:" Foreground="#999"/>
+                            <Run Text="{Binding MA10Value, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
+                            <Run Text=" " Foreground="#999"/>
+                            <Run Text="MA20:" Foreground="#999"/>
+                            <Run Text="{Binding MA20Value, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
                         </TextBlock>
                         <TextBlock FontSize="11" Margin="0,3,0,0">
-                <Run Text="EMA(5,10,20) " Foreground="#999"/>
-                <Run Text="EMA5:" Foreground="#999"/>
-                <Run Text="{Binding EMA5Value, FallbackValue=--}" Foreground="#FFD700" FontWeight="Bold"/>
-                <Run Text=" " Foreground="#999"/>
-                <Run Text="EMA10:" Foreground="#999"/>
-                <Run Text="{Binding EMA10Value, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
-                <Run Text=" " Foreground="#999"/>
-                <Run Text="EMA20:" Foreground="#999"/>
-                <Run Text="{Binding EMA20Value, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
+                            <Run Text="EMA(5,10,20) " Foreground="#999"/>
+                            <Run Text="EMA5:" Foreground="#999"/>
+                            <Run Text="{Binding EMA5Value, FallbackValue=--}" Foreground="#FFD700" FontWeight="Bold"/>
+                            <Run Text=" " Foreground="#999"/>
+                            <Run Text="EMA10:" Foreground="#999"/>
+                            <Run Text="{Binding EMA10Value, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
+                            <Run Text=" " Foreground="#999"/>
+                            <Run Text="EMA20:" Foreground="#999"/>
+                            <Run Text="{Binding EMA20Value, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
                         </TextBlock>
                         <TextBlock FontSize="11" Margin="0,3,0,0">
-                <Run Text="BOLL(20,2)   " Foreground="#999"/>
-                <Run Text="UP:" Foreground="#999"/>
-                <Run Text="{Binding BollUpValue, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
-                <Run Text=" " Foreground="#999"/>
-                <Run Text="MID:" Foreground="#999"/>
-                <Run Text="{Binding BollMidValue, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
-                <Run Text=" " Foreground="#999"/>
-                <Run Text="DN:" Foreground="#999"/>
-                <Run Text="{Binding BollDnValue, FallbackValue=--}" Foreground="#00A800" FontWeight="Bold"/>
+                            <Run Text="BOLL(20,2)   " Foreground="#999"/>
+                            <Run Text="UP:" Foreground="#999"/>
+                            <Run Text="{Binding BollUpValue, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
+                            <Run Text=" " Foreground="#999"/>
+                            <Run Text="MID:" Foreground="#999"/>
+                            <Run Text="{Binding BollMidValue, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
+                            <Run Text=" " Foreground="#999"/>
+                            <Run Text="DN:" Foreground="#999"/>
+                            <Run Text="{Binding BollDnValue, FallbackValue=--}" Foreground="#00A800" FontWeight="Bold"/>
                         </TextBlock>
                     </StackPanel>
 
-                    <!-- K线图：顶部Margin改为0，让指标文字浮在图内部 -->
                     <scottplot:WpfPlot x:Name="KlinePlot" Margin="10,0,10,0"/>
                 </Grid>
             </Border>
 
             <!-- 5. VOL副图 -->
-            <!-- ← 改动7：去掉底部Margin，与MACD紧密相连 -->
             <Border Grid.Row="4" Background="White" CornerRadius="6" Margin="0,0,0,0"
-        BorderBrush="#DDD" BorderThickness="1">
+                    BorderBrush="#DDD" BorderThickness="1">
                 <Grid>
                     <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,4" Panel.ZIndex="1">
                         <TextBlock FontSize="11">
@@ -281,15 +269,13 @@
                             <Run Text="{Binding VolumeValue, FallbackValue=--}" Foreground="#333" FontWeight="Bold"/>
                         </TextBlock>
                     </StackPanel>
-                    <!-- ← 改动8：左边距从40改为10 -->
                     <scottplot:WpfPlot x:Name="VolPlot" Margin="10,0,10,0"/>
                 </Grid>
             </Border>
 
             <!-- 6. MACD副图 -->
             <Border Grid.Row="5" Background="White" CornerRadius="6"
-        BorderBrush="#DDD" BorderThickness="1">
-                <!-- ← 改动9：简化内部Grid，去掉无意义的ColumnDefinitions，统一左边距 -->
+                    BorderBrush="#DDD" BorderThickness="1">
                 <Grid>
                     <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,4" Panel.ZIndex="1">
                         <TextBlock FontSize="11">
@@ -304,7 +290,6 @@
                             <Run Text="{Binding MACDValue, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
                         </TextBlock>
                     </StackPanel>
-                    <!-- ← 改动10：左边距从40改为10 -->
                     <scottplot:WpfPlot x:Name="MacdPlot" Margin="10,0,10,0"/>
                 </Grid>
             </Border>
@@ -418,35 +403,113 @@
                         <!-- 操作 -->
                         <TextBlock Text="操作" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
 
-                        <!-- 买入/卖出 -->
-                        <Grid Margin="0,0,0,6">
+                        <!-- 分仓模式：档位按钮列表 -->
+                        <!-- 分仓模式：档位按钮列表 -->
+                        <ItemsControl ItemsSource="{Binding SplitBuyItems}" Margin="0,0,0,4"
+              Visibility="{Binding IsBuyOptionsVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Height="24" Margin="0,1" BorderThickness="0" FontWeight="Bold"
+                                            HorizontalContentAlignment="Stretch"
+                                            Command="{Binding DataContext.SplitBuyCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding Percent}">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Background" Value="#FF6B8A"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border Background="{TemplateBinding Background}" CornerRadius="3">
+                                                                <Grid Margin="10,0">
+                                                                    <TextBlock Text="{Binding Text}" FontSize="12" 
+                                                                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                                    <TextBlock Text="{Binding Index}" FontSize="10" 
+                                                                               Foreground="White" Opacity="0.6"
+                                                                               HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                                </Grid>
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsEnabled" Value="False">
+                                                        <Setter Property="Opacity" Value="0.35"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+						<!-- 分仓模式：卖出档位按钮列表 -->
+						<ItemsControl ItemsSource="{Binding SplitSellItems}" Margin="0,0,0,4"
+                                      Visibility="{Binding IsSellOptionsVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+							<ItemsControl.ItemTemplate>
+								<DataTemplate>
+									<Button Height="24" Margin="0,1" BorderThickness="0" FontWeight="Bold"
+                                            HorizontalContentAlignment="Stretch"
+                                            Command="{Binding DataContext.SplitSellCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding Percent}">
+										<Button.Style>
+											<Style TargetType="Button">
+												<Setter Property="Background" Value="#3E9B6E"/>
+												<Setter Property="Foreground" Value="White"/>
+												<Setter Property="Template">
+													<Setter.Value>
+														<ControlTemplate TargetType="Button">
+															<Border Background="{TemplateBinding Background}" CornerRadius="3">
+																<Grid Margin="10,0">
+																	<TextBlock Text="{Binding Text}" FontSize="12"
+                                                                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
+																	<TextBlock Text="{Binding Index}" FontSize="10"
+                                                                               Foreground="White" Opacity="0.6"
+                                                                               HorizontalAlignment="Right" VerticalAlignment="Center"/>
+																</Grid>
+															</Border>
+														</ControlTemplate>
+													</Setter.Value>
+												</Setter>
+												<Style.Triggers>
+													<Trigger Property="IsEnabled" Value="False">
+														<Setter Property="Opacity" Value="0.35"/>
+													</Trigger>
+												</Style.Triggers>
+											</Style>
+										</Button.Style>
+									</Button>
+								</DataTemplate>
+							</ItemsControl.ItemTemplate>
+						</ItemsControl>
+
+                        <!-- 分仓模式：B买入 + S卖出 -->
+                        <Grid Margin="0,0,0,6"
+                              Visibility="{Binding IsSplitMode, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
+                            <!-- B买入 -->
                             <Button Grid.Column="0" Margin="0,0,3,0" Height="48" BorderThickness="0" FontWeight="Bold"
-        Command="{Binding BuyCommand}">
+                                    Command="{Binding BuyCommand}">
                                 <Button.Style>
                                     <Style TargetType="Button">
                                         <Setter Property="Background" Value="#E91E63"/>
                                         <Setter Property="Foreground" Value="White"/>
-                                        <Setter Property="Opacity" Value="1"/>
                                         <Setter Property="Template">
                                             <Setter.Value>
                                                 <ControlTemplate TargetType="Button">
-                                                    <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}">
-                                                        <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"/>
+                                                    <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                     </Border>
                                                 </ControlTemplate>
                                             </Setter.Value>
                                         </Setter>
                                         <Style.Triggers>
                                             <Trigger Property="IsEnabled" Value="False">
-                                                <Setter Property="Background" Value="#E91E63"/>
-                                                <Setter Property="Foreground" Value="White"/>
+                                                <Setter Property="Opacity" Value="0.4"/>
                                             </Trigger>
                                         </Style.Triggers>
                                     </Style>
@@ -455,33 +518,29 @@
                                     <TextBlock Text="B" FontSize="25" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,15,0"/>
                                     <StackPanel VerticalAlignment="Center">
                                         <TextBlock Text="买入" FontSize="16"/>
-                                        <TextBlock Text="{Binding BuyBtnSubText, FallbackValue=可买1/1仓}" FontSize="10" Opacity="0.85" Margin="0,1,0,0"/>
+                                        <TextBlock Text="{Binding BuyBtnSubText, FallbackValue=可买10/10仓}" FontSize="10" Opacity="0.85" Margin="0,1,0,0"/>
                                     </StackPanel>
                                 </StackPanel>
                             </Button>
+                            <!-- S卖出 -->
                             <Button Grid.Column="1" Margin="3,0,0,0" Height="48" BorderThickness="0" FontWeight="Bold"
-        Command="{Binding SellCommand}">
+                                    Command="{Binding SellCommand}">
                                 <Button.Style>
                                     <Style TargetType="Button">
                                         <Setter Property="Background" Value="#FF0E5B11"/>
                                         <Setter Property="Foreground" Value="White"/>
-                                        <Setter Property="Opacity" Value="1"/>
                                         <Setter Property="Template">
                                             <Setter.Value>
                                                 <ControlTemplate TargetType="Button">
-                                                    <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}">
-                                                        <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"/>
+                                                    <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                     </Border>
                                                 </ControlTemplate>
                                             </Setter.Value>
                                         </Setter>
                                         <Style.Triggers>
                                             <Trigger Property="IsEnabled" Value="False">
-                                                <Setter Property="Background" Value="#FF0E5B11"/>
-                                                <Setter Property="Foreground" Value="White"/>
+                                                <Setter Property="Opacity" Value="0.4"/>
                                             </Trigger>
                                         </Style.Triggers>
                                     </Style>
@@ -496,7 +555,12 @@
                             </Button>
                         </Grid>
 
-                        <!-- 持有/观望 -->
+                        <!-- 普通模式独占内容（如有需要放这里） -->
+                        <Grid Margin="0,0,0,6" Visibility="{Binding IsNormalMode, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <!-- 普通模式特有的按钮放这里 -->
+                        </Grid>
+
+                        <!-- 持有/观望（两种模式共用） -->
                         <Button Height="42" Margin="0,0,0,8" BorderThickness="0" FontWeight="Bold"
                                 Command="{Binding HoldOrWatchCommand}">
                             <Button.Style>
@@ -531,26 +595,113 @@
                             </StackPanel>
                         </Button>
 
-                        <!-- 自动播放 -->
-                        <Grid Margin="0,0,0,12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Button Grid.Column="0" Content="自动播放" Width="85" Height="36"
-                                    Background="#4A90D9" Foreground="White"
-                                    FontSize="12" FontWeight="Bold" BorderThickness="0"/>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                <Button Content="0.5x" Width="40" Height="28" Margin="2,0" Background="#F5F5F5" BorderBrush="#DDD" BorderThickness="1" FontSize="11"/>
-                                <Button Content="1x" Width="40" Height="28" Margin="2,0" Background="#E91E63" Foreground="White" BorderThickness="0" FontSize="11"/>
-                                <Button Content="2x" Width="40" Height="28" Margin="2,0" Background="#F5F5F5" BorderBrush="#DDD" BorderThickness="1" FontSize="11"/>
-                                <Button Content="4x" Width="40" Height="28" Margin="2,0" Background="#F5F5F5" BorderBrush="#DDD" BorderThickness="1" FontSize="11"/>
-                            </StackPanel>
-                        </Grid>
+                        <!-- 自动播放（两种模式共用） -->
+						<!-- 自动播放（两种模式共用） -->
+						<Grid Margin="0,0,0,12">
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto"/>
+								<ColumnDefinition Width="*"/>
+							</Grid.ColumnDefinitions>
+							<Button Grid.Column="0" Content="{Binding PlayBtnText}" Width="85" Height="36"
+                                    FontSize="12" FontWeight="Bold"
+                                    Command="{Binding TogglePlayCommand}">
+								<Button.Style>
+									<Style TargetType="Button">
+										<Setter Property="Background" Value="#4A90D9"/>
+										<Setter Property="Foreground" Value="White"/>
+										<Setter Property="BorderThickness" Value="0"/>
+										<Setter Property="Cursor" Value="Hand"/>
+										<Style.Triggers>
+											<!-- 播放中按钮变橙色，提示"再点=暂停" -->
+											<DataTrigger Binding="{Binding IsPlaying}" Value="True">
+												<Setter Property="Background" Value="#E6A23C"/>
+											</DataTrigger>
+											<Trigger Property="IsEnabled" Value="False">
+												<Setter Property="Opacity" Value="0.4"/>
+											</Trigger>
+										</Style.Triggers>
+									</Style>
+								</Button.Style>
+							</Button>
+							<StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+								<Button Content="0.5x" Width="40" Height="28" Margin="2,0" FontSize="11"
+                                        Command="{Binding PlaySpeedCommand}" CommandParameter="0.5">
+									<Button.Style>
+										<Style TargetType="Button">
+											<Setter Property="Background" Value="#F5F5F5"/>
+											<Setter Property="Foreground" Value="#333"/>
+											<Setter Property="BorderBrush" Value="#DDD"/>
+											<Setter Property="BorderThickness" Value="1"/>
+											<Style.Triggers>
+												<DataTrigger Binding="{Binding IsSpeed05x}" Value="True">
+													<Setter Property="Background" Value="#E91E63"/>
+													<Setter Property="Foreground" Value="White"/>
+													<Setter Property="BorderBrush" Value="#E91E63"/>
+												</DataTrigger>
+											</Style.Triggers>
+										</Style>
+									</Button.Style>
+								</Button>
+								<Button Content="1x" Width="40" Height="28" Margin="2,0" FontSize="11"
+                                        Command="{Binding PlaySpeedCommand}" CommandParameter="1">
+									<Button.Style>
+										<Style TargetType="Button">
+											<Setter Property="Background" Value="#F5F5F5"/>
+											<Setter Property="Foreground" Value="#333"/>
+											<Setter Property="BorderBrush" Value="#DDD"/>
+											<Setter Property="BorderThickness" Value="1"/>
+											<Style.Triggers>
+												<DataTrigger Binding="{Binding IsSpeed1x}" Value="True">
+													<Setter Property="Background" Value="#E91E63"/>
+													<Setter Property="Foreground" Value="White"/>
+													<Setter Property="BorderBrush" Value="#E91E63"/>
+												</DataTrigger>
+											</Style.Triggers>
+										</Style>
+									</Button.Style>
+								</Button>
+								<Button Content="2x" Width="40" Height="28" Margin="2,0" FontSize="11"
+                                        Command="{Binding PlaySpeedCommand}" CommandParameter="2">
+									<Button.Style>
+										<Style TargetType="Button">
+											<Setter Property="Background" Value="#F5F5F5"/>
+											<Setter Property="Foreground" Value="#333"/>
+											<Setter Property="BorderBrush" Value="#DDD"/>
+											<Setter Property="BorderThickness" Value="1"/>
+											<Style.Triggers>
+												<DataTrigger Binding="{Binding IsSpeed2x}" Value="True">
+													<Setter Property="Background" Value="#E91E63"/>
+													<Setter Property="Foreground" Value="White"/>
+													<Setter Property="BorderBrush" Value="#E91E63"/>
+												</DataTrigger>
+											</Style.Triggers>
+										</Style>
+									</Button.Style>
+								</Button>
+								<Button Content="4x" Width="40" Height="28" Margin="2,0" FontSize="11"
+                                        Command="{Binding PlaySpeedCommand}" CommandParameter="4">
+									<Button.Style>
+										<Style TargetType="Button">
+											<Setter Property="Background" Value="#F5F5F5"/>
+											<Setter Property="Foreground" Value="#333"/>
+											<Setter Property="BorderBrush" Value="#DDD"/>
+											<Setter Property="BorderThickness" Value="1"/>
+											<Style.Triggers>
+												<DataTrigger Binding="{Binding IsSpeed4x}" Value="True">
+													<Setter Property="Background" Value="#E91E63"/>
+													<Setter Property="Foreground" Value="White"/>
+													<Setter Property="BorderBrush" Value="#E91E63"/>
+												</DataTrigger>
+											</Style.Triggers>
+										</Style>
+									</Button.Style>
+								</Button>
+							</StackPanel>
+						</Grid>
 
                         <Separator Margin="0,0,0,10"/>
 
-                        <!-- 操作流水 -->
+                        <!-- 操作流水（两种模式共用） -->
                         <TextBlock Text="操作流水" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
 
                         <Border Background="#F8F8F8" CornerRadius="4" Padding="0" MinHeight="50">
@@ -600,8 +751,8 @@
 
                 <!-- 结束训练并结算 - 固定在底部 -->
                 <Button Grid.Row="1" Height="44" Margin="0,10,0,0"
-        FontSize="14" FontWeight="Bold" BorderThickness="0" Cursor="Hand"
-        Command="{Binding SettleCommand}">
+                        FontSize="14" FontWeight="Bold" BorderThickness="0" Cursor="Hand"
+                        Command="{Binding SettleCommand}">
                     <Button.Style>
                         <Style TargetType="Button">
                             <Setter Property="Background" Value="#2C3E50"/>
@@ -611,10 +762,10 @@
                                 <Setter.Value>
                                     <ControlTemplate TargetType="Button">
                                         <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}">
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}">
                                             <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"/>
+                                                              VerticalAlignment="Center"/>
                                         </Border>
                                     </ControlTemplate>
                                 </Setter.Value>
