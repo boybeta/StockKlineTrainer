@@ -140,5 +140,203 @@ namespace BaozhuKLineTrainer.Services
 
             return (segment, selectedCode, segment.First().Date, segment.Last().Date);
         }
+
+        // ==================== 训练记录持久化 ====================
+
+        /// <summary>建表（幂等，老库启动时自动升级）。每局结算写入一条。</summary>
+        public void EnsureTrainingRecordTable()
+        {
+            using var conn = new SqliteConnection(_connectionString);
+            conn.Open();
+            var cmd = new SqliteCommand(@"
+                CREATE TABLE IF NOT EXISTS cy_training_record (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    train_time TEXT NOT NULL,
+                    stock_code TEXT,
+                    stock_name TEXT,
+                    period TEXT,
+                    start_date TEXT,
+                    end_date TEXT,
+                    initial_firecrackers REAL,
+                    final_firecrackers REAL,
+                    profit_amount REAL,
+                    profit_pct REAL,
+                    interval_pct REAL,
+                    open_count INTEGER,
+                    win_rate REAL,
+                    hold_days INTEGER,
+                    watch_days INTEGER,
+                    elapsed_sec INTEGER,
+                    leverage INTEGER,
+                    is_full_game INTEGER DEFAULT 1,
+                    config_json TEXT,
+                    heavy_hold_days INTEGER DEFAULT 0
+                )", conn);
+            cmd.ExecuteNonQuery();
+
+            // 老库升级：缺 heavy_hold_days 列则自动补上（幂等）
+            bool hasHeavy = false;
+            using (var r = new SqliteCommand("PRAGMA table_info(cy_training_record)", conn).ExecuteReader())
+                while (r.Read())
+                    if (r.GetString(1) == "heavy_hold_days") hasHeavy = true;
+            if (!hasHeavy)
+                new SqliteCommand("ALTER TABLE cy_training_record ADD COLUMN heavy_hold_days INTEGER DEFAULT 0", conn).ExecuteNonQuery();
+        }
+
+        /// <summary>写入一条训练记录</summary>
+        public void SaveTrainingRecord(TrainingRecordEntry e)
+        {
+            using var conn = new SqliteConnection(_connectionString);
+            conn.Open();
+            var cmd = new SqliteCommand(@"
+                INSERT INTO cy_training_record
+                    (train_time, stock_code, stock_name, period, start_date, end_date,
+                     initial_firecrackers, final_firecrackers, profit_amount, profit_pct, interval_pct,
+                     open_count, win_rate, hold_days, watch_days, elapsed_sec, leverage, is_full_game, config_json,heavy_hold_days)
+                VALUES
+                    (@train_time, @stock_code, @stock_name, @period, @start_date, @end_date,
+                     @initial_firecrackers, @final_firecrackers, @profit_amount, @profit_pct, @interval_pct,
+                     @open_count, @win_rate, @hold_days, @watch_days, @elapsed_sec, @leverage, @is_full_game, @config_json,@heavy_hold_days)", conn);
+            cmd.Parameters.AddWithValue("@train_time", e.TrainTime);
+            cmd.Parameters.AddWithValue("@stock_code", e.StockCode);
+            cmd.Parameters.AddWithValue("@stock_name", e.StockName);
+            cmd.Parameters.AddWithValue("@period", e.Period);
+            cmd.Parameters.AddWithValue("@start_date", e.StartDate);
+            cmd.Parameters.AddWithValue("@end_date", e.EndDate);
+            cmd.Parameters.AddWithValue("@initial_firecrackers", e.InitialFirecrackers);
+            cmd.Parameters.AddWithValue("@final_firecrackers", e.FinalFirecrackers);
+            cmd.Parameters.AddWithValue("@profit_amount", e.ProfitAmount);
+            cmd.Parameters.AddWithValue("@profit_pct", e.ProfitPct);
+            cmd.Parameters.AddWithValue("@interval_pct", e.IntervalPct);
+            cmd.Parameters.AddWithValue("@open_count", e.OpenCount);
+            cmd.Parameters.AddWithValue("@win_rate", e.WinRate);
+            cmd.Parameters.AddWithValue("@hold_days", e.HoldDays);
+            cmd.Parameters.AddWithValue("@watch_days", e.WatchDays);
+            cmd.Parameters.AddWithValue("@elapsed_sec", e.ElapsedSec);
+            cmd.Parameters.AddWithValue("@leverage", e.Leverage);
+            cmd.Parameters.AddWithValue("@is_full_game", e.IsFullGame);
+            cmd.Parameters.AddWithValue("@config_json", e.ConfigJson ?? "");
+            cmd.Parameters.AddWithValue("@heavy_hold_days", e.HeavyHoldDays);
+            cmd.ExecuteNonQuery();
+        }
+
+        /// <summary>一次 GROUP BY 拿全部股票的日线根数（启动筛池用，避免逐股拉全量数据只为数个数）</summary>
+        public Dictionary<string, int> GetDailyBarCounts()
+        {
+            var counts = new Dictionary<string, int>();
+            using var conn = new SqliteConnection(_connectionString);
+            conn.Open();
+            var cmd = new SqliteCommand(
+                "SELECT code, COUNT(*) FROM cy_daily GROUP BY code", conn);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                counts[reader.GetString(0)] = reader.GetInt32(1);
+            return counts;
+        }
+
+        /// <summary>爆竹数量曲线数据：按结算顺序返回（时间, 累计爆竹）。
+        /// 累计口径：10000 起步，每局盈亏额累加（盈利为正则加，亏损为负则减）</summary>
+        public List<(string time, double firecrackers)> GetFirecrackerCurve()
+        {
+            var list = new List<(string, double)>();
+            using var conn = new SqliteConnection(_connectionString);
+            conn.Open();
+            var cmd = new SqliteCommand(
+                "SELECT train_time, profit_amount FROM cy_training_record ORDER BY id ASC", conn);
+            using var reader = cmd.ExecuteReader();
+            double total = 10000;   // 起始本金
+            while (reader.Read())
+            {
+                total += reader.GetDouble(1);   // 每局盈亏额：正加负减
+                list.Add((reader.GetString(0), total));
+            }
+            return list;
+        }
+
+        /// <summary>首页顶部统计：训练场次 + 最新累计爆竹（无记录时返回默认值 10000）</summary>
+        public (int gameCount, double latestFirecrackers) GetHomeSummary()
+        {
+            using var conn = new SqliteConnection(_connectionString);
+            conn.Open();
+            var cmd = new SqliteCommand(
+                "SELECT COUNT(*), COALESCE(10000 + (SELECT SUM(profit_amount) FROM cy_training_record), 10000) FROM cy_training_record", conn);
+            using var reader = cmd.ExecuteReader();
+            if (reader.Read())
+                return (reader.GetInt32(0), reader.GetDouble(1));
+            return (0, 10000);
+        }
+
+        /// <summary>首页"训练数据"格子聚合：总胜率(开仓加权)/平均持仓/跑赢区间率/盈亏比/平均每局收益</summary>
+        /// <summary>训练数据聚合（首页"训练数据"卡片 12 格）</summary>
+        public (int gameCount, double gameWinRate, double beatIntervalRate, double profitLossRatio,
+                double avgHoldDays, double holdRate, double heavyRate, double avgElapsedSec,
+                int totalOpens, double openWinRate, double maxProfitPct, int winGames) GetTrainingStats()
+        {
+            using var conn = new SqliteConnection(_connectionString);
+            conn.Open();
+            var cmd = new SqliteCommand(@"
+                SELECT
+                    COUNT(*),
+                    COALESCE(AVG(CASE WHEN profit_pct > 0 THEN 1.0 ELSE 0 END) * 100, 0),
+                    COALESCE(AVG(CASE WHEN profit_pct > interval_pct THEN 1.0 ELSE 0 END) * 100, 0),
+                    COALESCE(
+                        (SUM(CASE WHEN profit_pct > 0 THEN profit_pct END)
+                            / NULLIF(COUNT(CASE WHEN profit_pct > 0 THEN 1 END), 0))
+                        /
+                        (ABS(SUM(CASE WHEN profit_pct < 0 THEN profit_pct END))
+                            / NULLIF(COUNT(CASE WHEN profit_pct < 0 THEN 1 END), 0))
+                    , 0),
+                    COALESCE(AVG(hold_days), 0),
+                    COALESCE(SUM(hold_days) * 100.0 / NULLIF(SUM(hold_days + watch_days), 0), 0),
+                    COALESCE(SUM(heavy_hold_days) * 100.0 / NULLIF(SUM(hold_days + watch_days), 0), 0),
+                    COALESCE(AVG(elapsed_sec), 0),
+                    COALESCE(SUM(open_count), 0),
+                    COALESCE(SUM(win_rate * open_count) / NULLIF(SUM(open_count), 0), 0),
+                    COALESCE(MAX(profit_pct), 0),
+                    COALESCE(SUM(CASE WHEN profit_pct > 0 THEN 1 ELSE 0 END), 0)
+                FROM cy_training_record", conn);
+            using var reader = cmd.ExecuteReader();
+            if (reader.Read())
+                return (reader.GetInt32(0), reader.GetDouble(1), reader.GetDouble(2), reader.GetDouble(3),
+                        reader.GetDouble(4), reader.GetDouble(5), reader.GetDouble(6), reader.GetDouble(7),
+                        reader.GetInt32(8), reader.GetDouble(9), reader.GetDouble(10), reader.GetInt32(11));
+            return (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        }
+
+        /// <summary>按代码查股票名称（训练记录用）</summary>
+        public string GetStockName(string code)
+        {
+            using var conn = new SqliteConnection(_connectionString);
+            conn.Open();
+            var cmd = new SqliteCommand("SELECT name FROM cy_stock_info WHERE code = @code", conn);
+            cmd.Parameters.AddWithValue("@code", code);
+            var result = cmd.ExecuteScalar();
+            return result == null ? "" : result.ToString() ?? "";
+        }
+    }
+
+    /// <summary>训练记录行模型（落库用）</summary>
+    public class TrainingRecordEntry
+    {
+        public string TrainTime { get; set; } = "";
+        public string StockCode { get; set; } = "";
+        public string StockName { get; set; } = "";
+        public string Period { get; set; } = "";
+        public string StartDate { get; set; } = "";
+        public string EndDate { get; set; } = "";
+        public double InitialFirecrackers { get; set; }
+        public double FinalFirecrackers { get; set; }
+        public double ProfitAmount { get; set; }
+        public double ProfitPct { get; set; }
+        public double IntervalPct { get; set; }
+        public int OpenCount { get; set; }
+        public double WinRate { get; set; }
+        public int HoldDays { get; set; }
+        public int WatchDays { get; set; }
+        public int ElapsedSec { get; set; }
+        public int Leverage { get; set; }
+        public int IsFullGame { get; set; } = 1;
+        public string ConfigJson { get; set; } = "";
+        public int HeavyHoldDays { get; set; }
     }
 }

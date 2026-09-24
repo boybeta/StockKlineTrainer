@@ -17,9 +17,48 @@ namespace BaozhuKLineTrainer
             this.Close();
         }
 
+        private TrainingConfig CollectConfig()
+        {
+            var config = new TrainingConfig();
+
+            // 当前只收集分仓配置，后续每加一个功能就在这里加一行
+            config.IsSplitPosition = TglSplitPosition.IsChecked == true;
+            config.SplitPositionPercent = (int)SliderSplitPosition.Value;
+
+            // 杠杆：开关关闭或未选时默认 1 倍
+            if (TglLeverage.IsChecked == true)
+            {
+                if (RdoLeverage2.IsChecked == true) config.Leverage = 2;
+                else if (RdoLeverage3.IsChecked == true) config.Leverage = 3;
+                else if (RdoLeverage4.IsChecked == true) config.Leverage = 4;
+                else config.Leverage = 1;
+            }
+            else
+            {
+                config.Leverage = 1;
+            }
+
+            // ← 从这里开始插入
+            // 止盈/止损
+            config.IsStopProfit = TglStopProfit.IsChecked == true;
+            config.StopProfitPercent = ParsePercent(TxtStopProfit.Text, 10);
+            config.IsStopLoss = TglStopLoss.IsChecked == true;
+            config.StopLossPercent = ParsePercent(TxtStopLoss.Text, 10);
+
+            return config;
+
+        }
+
+        // 文本框可能为空或非法，解析失败时用默认值
+        private static double ParsePercent(string text, double fallback)
+        {
+            return double.TryParse(text, out double v) && v > 0 ? v : fallback;
+        }
+
         private void StartTraining_Click(object sender, RoutedEventArgs e)
         {
-            KLineTrainWindow kLineWin = new KLineTrainWindow();
+            var config = CollectConfig();
+            KLineTrainWindow kLineWin = new KLineTrainWindow(config);
             kLineWin.Show();
             Application.Current.MainWindow = kLineWin;
             this.Close();
@@ -91,5 +130,24 @@ namespace BaozhuKLineTrainer
             if (SliderSplitPosition.Value < SliderSplitPosition.Maximum)
                 SliderSplitPosition.Value += 10;
         }
+
+        // ========== 分仓模式与爆竹比例联动 ==========
+
+        private void TglSplitPosition_Checked(object sender, RoutedEventArgs e)
+        {
+            TxtFirecrackerRatio.Text = ((int)SliderSplitPosition.Value).ToString();
+        }
+
+        private void TglSplitPosition_Unchecked(object sender, RoutedEventArgs e)
+        {
+            TxtFirecrackerRatio.Text = "100";
+        }
+
+        private void SliderSplitPosition_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (TglSplitPosition.IsChecked == true)
+                TxtFirecrackerRatio.Text = ((int)SliderSplitPosition.Value).ToString();
+        }
+
     }
 }

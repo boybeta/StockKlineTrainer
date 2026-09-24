@@ -25,17 +25,59 @@ namespace BaozhuKLineTrainer
         public string Profit { get; set; } = "";
     }
 
+    public class SplitBuyItem
+    {
+        public int Index { get; set; }
+        public string Text { get; set; } = "";
+        public int Percent { get; set; }
+    }
+
+
     public class MainViewModel : INotifyPropertyChanged
     {
         private readonly DatabaseService _dbService;
         private List<StockData> _currentDataList = new();
         private int _totalBars = 270;
-        private int _trainingBars = 120;
+        // ===== 按周期取窗口总根数 =====
+        // 日线：270 = 120 训练 + 150 未来；周线：170 = 120 训练 + 50 未来（约1年）
+        // 月线：名义 72 = 60 训练 + 12 未来；实际未来段按数据量动态取 6~12 根（见 MonthMinFutureBars）
+        private const int WeekTotalBars = 170;
+        private const int MonthTotalBars = 72;
+        private const int MonthMinFutureBars = 6;   // 月线未来段下限：不足12根时，≥6根也开局，练完提前结算
+        private int _monthTotalBars = MonthTotalBars;   // 当前这局月线的实际总根数（60 + 实际未来段 6~12）
+        private int _currentTotalBars = 270;   // 当前窗口实际总根数（短历史窗口时 < 名义值，推进/剩余/结算上限都走它）
+        // 当前窗口"实际"总根数：短历史窗口时小于名义值（如短周线局 143 < 170）。
+        // 推进上限、剩余根数、结算判定、进度映射都必须走它，避免推进进死区/进度算错
+        private int TotalBarsForPeriod => _currentTotalBars;
+
+        // 任意周期对应的"名义"窗口总根数（切周期算新周期的未来段上限用）
+        private int TotalBarsForPeriodFor(KLinePeriod period) => period switch
+        {
+            KLinePeriod.Week => WeekTotalBars,
+            KLinePeriod.Month => MonthTotalBars,
+            _ => _totalBars,
+        };
+
+        // ===== 训练窗口根数：日/周 120 根，月线 60 根（5年；120根月K=10年，太笨重） =====
+        private int TrainingBarsForPeriod => TrainingBarsFor(SelectedPeriod);
+        private static int TrainingBarsFor(KLinePeriod period) => period == KLinePeriod.Month ? 60 : 120;
+
+        // ===== 短历史窗口：次新股历史不满训练窗口时，用满全部真实历史（图表从左侧开始画） =====
+        // 低于该下限才回滚——上市时间太短，确实没东西可练
+        private static int MinPastBarsFor(KLinePeriod period) => period switch
+        {
+            KLinePeriod.Month => 24,   // 月线至少 2 年真实历史
+            KLinePeriod.Week => 52,    // 周线至少 1 年
+            _ => 120,                  // 日线至少半年
+        };
+        private int _trainStartBarIdx = 119;   // 本局训练起点K线索引（结算区间涨跌幅用，切换时随短窗口调整）
         private int _currentVisibleBars = 120;
         private bool _isTrainingMode = false;
         private bool _isAnswerRevealed = false;
         private bool _isInitializing = true;
+
         private readonly Random _random = new Random();
+        private readonly TrainingConfig _config;
 
         // ===== 十字光标 =====
         private ScottPlot.Plottables.VerticalLine? _klineVLine;
@@ -58,8 +100,18 @@ namespace BaozhuKLineTrainer
         private int _buyBarIndex = -1;
         private bool _hasPosition => _holdBuyAmount > 0;
 
-        // ===== 预筛选缓存 =====
-        private List<string> _validStockList = new();
+        // 最大允许持仓金额 = 本金 × 使用比例 × 杠杆
+        private double MaxPositionAmount =>
+            _initialFirecrackers
+            * (_config.IsSplitPosition ? _config.SplitPositionPercent / 100.0 : 1.0)
+            * Math.Max(1, _config.Leverage);
+
+        // 1 成仓 = 初始本金的 10%（档位按钮的单位，语义保持不变）
+        private double PositionUnit => _initialFirecrackers / 10.0;
+
+        // ===== 预筛选缓存：code → 日线根数（启动查一次）；各周期合格池惰性缓存 =====
+        private readonly Dictionary<string, int> _stockDailyCounts = new();
+        private readonly Dictionary<KLinePeriod, List<string>> _eligibleCache = new();
 
         // ===== 交易标记 B/S =====
         private readonly List<TradeMarker> _tradeMarkers = new();
@@ -86,6 +138,75 @@ namespace BaozhuKLineTrainer
 
         // ===== 操作流水 =====
         public ObservableCollection<TradeRecord> TradeRecords { get; } = new();
+
+        public ObservableCollection<SplitBuyItem> SplitBuyItems { get; } = new();
+        public bool IsSplitMode => _config?.IsSplitPosition == true;
+        public bool IsNormalMode => !IsSplitMode;
+        private bool _isBuyOptionsVisible;
+        public bool IsBuyOptionsVisible
+        {
+            get => _isBuyOptionsVisible;
+            set { _isBuyOptionsVisible = value; OnPropertyChanged(); }
+        }
+
+        public ObservableCollection<SplitBuyItem> SplitSellItems { get; } = new();
+
+        private bool _isSellOptionsVisible;
+        public bool IsSellOptionsVisible
+        {
+            get => _isSellOptionsVisible;
+            set { _isSellOptionsVisible = value; OnPropertyChanged(); }
+        }
+        public ICommand SplitBuyCommand { get; }
+        public ICommand SplitSellCommand { get; }
+
+        public ICommand TogglePlayCommand { get; }
+        public ICommand PlaySpeedCommand { get; }
+        // ===== 周期切换（日/周） =====
+        public KLinePeriod SelectedPeriod { get; private set; } = KLinePeriod.Day;
+        public bool IsPeriodDay => SelectedPeriod == KLinePeriod.Day;
+        public bool IsPeriodWeek => SelectedPeriod == KLinePeriod.Week;
+        public bool IsPeriodMonth => SelectedPeriod == KLinePeriod.Month;
+        public ICommand SwitchPeriodCommand { get; }
+        // ===== 持有/观望连击计数（周线模式：一根周K = 5次点击） =====
+        private int _holdWatchClicks = 0;
+
+        /// <summary>推进一根K线所需的"持有/观望"点击次数：日线1次，周线5次（一个交易周）</summary>
+        private int ClicksPerStep => SelectedPeriod == KLinePeriod.Day ? 1 : 5;
+
+        // ===== 自动播放 =====
+        private DispatcherTimer? _playTimer;
+        private bool _isPlaying = false;
+        private double _playSpeed = 1.0;
+
+        public bool IsPlaying
+        {
+            get => _isPlaying;
+            set { _isPlaying = value; OnPropertyChanged(); OnPropertyChanged(nameof(PlayBtnText)); }
+        }
+
+        public string PlayBtnText => _isPlaying ? "暂停" : "自动播放";
+
+        public double PlaySpeed
+        {
+            get => _playSpeed;
+            set
+            {
+                _playSpeed = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsSpeed05x));
+                OnPropertyChanged(nameof(IsSpeed1x));
+                OnPropertyChanged(nameof(IsSpeed2x));
+                OnPropertyChanged(nameof(IsSpeed4x));
+                if (_playTimer != null)
+                    _playTimer.Interval = TimeSpan.FromMilliseconds(1000.0 / value / ClicksPerStep);
+            }
+        }
+
+        public bool IsSpeed05x => Math.Abs(_playSpeed - 0.5) < 0.001;
+        public bool IsSpeed1x => Math.Abs(_playSpeed - 1.0) < 0.001;
+        public bool IsSpeed2x => Math.Abs(_playSpeed - 2.0) < 0.001;
+        public bool IsSpeed4x => Math.Abs(_playSpeed - 4.0) < 0.001;
 
         // ===== 顶部信息栏绑定属性 =====
         private double _currentPrice;
@@ -243,15 +364,55 @@ namespace BaozhuKLineTrainer
         public string AvgCostPriceText => _avgCostPrice.HasValue ? _avgCostPrice.Value.ToString("F2") : "--";
         public string PositionText => _hasPosition ? "1/1" : "0/1";
         public string FrozenText => (_hasPosition && _currentVisibleBars <= _buyBarIndex + 1) ? "1" : "0";
-        public int RemainingBars => _totalBars - _currentVisibleBars;
+        public int RemainingBars => TotalBarsForPeriod - _currentVisibleBars;
         public int OpenCount => _openCount;
         public int ProfitCount => _profitCount;
         public int WatchDays => _watchDays;
         public int HoldDays => _holdDays;
         public int HeavyHoldDays => _heavyHoldDays;
         public string ElapsedText => $"{(int)_elapsed.TotalSeconds}s";
+        // 杠杆与借款显示
+        public int LeverageText => Math.Max(1, _config?.Leverage ?? 1);
 
-        public string BuyBtnSubText => !_hasPosition ? "可买1/1仓" : "无仓位可买";
+        public string BorrowText
+        {
+            get
+            {
+                double debt = Math.Max(0, -_cash);
+                return debt > 0.01 ? debt.ToString("F2") : "0.00";
+            }
+        }
+
+        // 当前股票代码（信息栏显示，避免用户对"看到的是哪只股"产生困惑）
+        public string CurrentStockCode => SelectedStock ?? "--";
+
+        // 有借款时红色显示，无借款灰色
+        public Brush BorrowBrush => Math.Max(0, -_cash) > 0.01
+            ? new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xFF, 0x32, 0x32))
+            : new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x99, 0x99, 0x99));
+
+        public string BuyBtnSubText
+        {
+            get
+            {
+                // 分仓模式：根据剩余额度显示
+                if (_config != null && _config.IsSplitPosition)
+                {
+                    double maxRatio = _config.SplitPositionPercent / 100.0;
+                    double usedRatio = _holdBuyAmount / _initialFirecrackers;
+                    int remainingTenths = (int)Math.Floor((maxRatio - usedRatio) * 10);
+                    remainingTenths = Math.Max(0, remainingTenths);
+
+                    if (remainingTenths <= 0) return "无仓位可买";
+                    return $"可买{remainingTenths}/10仓";
+                }
+
+                // 非分仓模式
+                if (_hasPosition) return "无仓位可买";
+                return "可买10/10仓";
+            }
+        }
+
         public string SellBtnSubText
         {
             get
@@ -289,8 +450,9 @@ namespace BaozhuKLineTrainer
             return new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x99, 0x99, 0x99));
         }
 
-        public MainViewModel()
+        public MainViewModel(TrainingConfig config)
         {
+            _config = config;
             string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "stockdata", "cy_stock.db");
             _dbService = new DatabaseService(dbPath);
 
@@ -300,15 +462,60 @@ namespace BaozhuKLineTrainer
             ToggleTrainingCommand = new RelayCommand(_ => ToggleTrainingMode());
             RevealAnswerCommand = new RelayCommand(_ => RevealAnswer(), _ => _isTrainingMode && !_isAnswerRevealed);
             NextTrainingCommand = new RelayCommand(_ => LoadRandomStock(), _ => _isTrainingMode);
-            HoldOrWatchCommand = new RelayCommand(_ => OnHoldOrWatch(), _ => !_isAnswerRevealed && _currentVisibleBars < _totalBars);
+            HoldOrWatchCommand = new RelayCommand(_ => OnHoldOrWatch(), _ => !_isAnswerRevealed && _currentVisibleBars < TotalBarsForPeriod);
             BuyCommand = new RelayCommand(_ => ExecuteBuy(), _ => CanBuy());
             SellCommand = new RelayCommand(_ => ExecuteSell(), _ => CanSell());
             SettleCommand = new RelayCommand(_ => ExecuteSettle(), _ => _isTrainingMode);
+            SplitBuyCommand = new RelayCommand(p =>
+            {
+                if (p is int percent) ExecuteSplitBuy(percent);
+            }, _ => CanBuy());
+
+            SplitSellCommand = new RelayCommand(p =>
+            {
+                if (p is int percent) ExecuteSplitSell(percent);
+            }, _ => CanSell());
+
+            TogglePlayCommand = new RelayCommand(_ => TogglePlay(), _ => CanTogglePlay());
+            PlaySpeedCommand = new RelayCommand(p =>
+            {
+                if (p is string s && double.TryParse(s, out double v)) PlaySpeed = v;
+            });
+            SwitchPeriodCommand = new RelayCommand(p =>
+            {
+                if (p is string s && Enum.TryParse<KLinePeriod>(s, out var period) && period != SelectedPeriod)
+                {
+                    var oldPeriod = SelectedPeriod;   // 记住旧周期：进度映射和失败回滚都要用
+                    SelectedPeriod = period;
+                    OnPropertyChanged(nameof(IsPeriodDay));
+                    OnPropertyChanged(nameof(IsPeriodWeek));
+                    OnPropertyChanged(nameof(IsPeriodMonth));
+                    SwitchPeriodKeepAnchor(oldPeriod);
+                }
+            });
+
+            RebuildSellItems();
 
             LoadStockList();
-            _currentVisibleBars = _trainingBars;
+            _currentVisibleBars = TrainingBarsForPeriod;
+
+            // 本金滚动：新一局从"累计总爆竹"开局（10000 + 历史所有局盈亏之和），
+            // 与首页曲线最后一点严格一致；读取失败则回退 10000
+            try
+            {
+                _dbService.EnsureTrainingRecordTable();
+                var (_, latestTotal) = _dbService.GetHomeSummary();
+                _initialFirecrackers = latestTotal;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[DIAG] 读取累计爆竹失败，按 10000 开局: {ex.Message}");
+            }
 
             _cash = _initialFirecrackers;
+            // 初始化分仓档位按钮（如50% → 1成~5成共5个按钮）
+            IsBuyOptionsVisible = false;
+            RebuildBuyItems();
 
             _isInitializing = false;
 
@@ -318,19 +525,314 @@ namespace BaozhuKLineTrainer
             }
         }
 
+        private bool CanSell() =>
+    _isTrainingMode &&
+    !_isAnswerRevealed &&
+    _hasPosition &&
+    _buyBarIndex >= 0 &&
+    _currentVisibleBars > _buyBarIndex + 1;   // T+1：买入当天不可卖
+
+        private void ExecuteSell()
+        {
+            if (!CanSell()) return;
+
+            // 分仓模式：S = 展开/收起卖出档位面板
+            if (_config.IsSplitPosition)
+            {
+                IsBuyOptionsVisible = false;
+                IsSellOptionsVisible = !IsSellOptionsVisible;
+                return;
+            }
+
+            // ===== 非分仓模式：一次性全仓卖出 =====
+            double price = GetCurrentPrice();
+            if (price <= 0 || !_avgCostPrice.HasValue) return;
+
+            double marketValue = _holdBuyAmount * (price / _avgCostPrice.Value);
+            double fee = marketValue * FeeRate;
+            double profit = marketValue - _holdBuyAmount - fee - (_holdBuyAmount * FeeRate);
+
+            _cash += marketValue - fee;
+            _closedProfitAmount += profit;
+            _closedCostAmount += _holdBuyAmount;
+            if (profit > 0) _profitCount++;
+
+            _tradeMarkers.Add(new TradeMarker { BarIndex = _currentVisibleBars - 1, Type = "S" });
+
+            TradeRecords.Insert(0, new TradeRecord
+            {
+                Type = "卖出",
+                Date = GetCurrentDate(),
+                Price = price,
+                Profit = ((price - _avgCostPrice.Value) / _avgCostPrice.Value * 100).ToString("F2") + "%"
+            });
+
+            _holdBuyAmount = 0;
+            _avgCostPrice = null;
+            _buyBarIndex = -1;
+
+            NotifyAllStats();
+            UpdatePriceChart();
+            CommandManager.InvalidateRequerySuggested();
+        }
+
+        /// <summary>
+        /// 切换日/周/月线时保持"当前股票 + 当前价位 + 整局时间跨度"不变。
+        /// 当前位置 = 最后一根可见K线；本局结束日 = 旧窗口末根日期（固定）。
+        /// 新窗口 = [训练段 + 不晚于结束日的未来段]——切周期只改K线粒度，
+        /// 当前价、持仓盈亏、剩余天数在三周期间完全一致，不再按比例重新起算未来段。
+        /// </summary>
+        private void SwitchPeriodKeepAnchor(KLinePeriod oldPeriod)
+        {
+            if (string.IsNullOrEmpty(SelectedStock) || _currentDataList == null || _currentDataList.Count == 0)
+            {
+                LoadRandomStock();
+                return;
+            }
+
+            bool wasRevealed = _isAnswerRevealed;
+            int anchorIdx = wasRevealed
+                ? _currentDataList.Count - 1
+                : Math.Min(_currentVisibleBars, _currentDataList.Count) - 1;
+            if (anchorIdx < 0) return;
+
+            DateTime curDate = _currentDataList[anchorIdx].Date;                       // ← 当前位置：最后一根可见K线
+            DateTime gameEndDate = _currentDataList[_currentTotalBars - 1].Date;       // ← 本局结束日期（固定不变）
+                                                                                       // ★ 切换前快照：旧窗口里 B/S 标记与"开始"线都是按索引存的，索引跨周期无法映射，
+                                                                                       //   但日期可以——先记住它们各自的日期，新窗口建成后再映射回去
+            var markerDates = _tradeMarkers
+                .Where(m => m.BarIndex >= 0 && m.BarIndex < _currentDataList.Count)
+                .Select(m => (m.Type, Date: _currentDataList[m.BarIndex].Date))
+                .ToList();
+            DateTime? startMarkerDate = (_isTrainingMode && _startMarkerIndex >= 0)
+                ? _currentDataList[(int)Math.Floor(_startMarkerIndex)].Date
+                : (DateTime?)null;
+            Debug.WriteLine($"[DIAG] Switch {oldPeriod}->{SelectedPeriod}: cur={curDate:yyyy-MM-dd} end={gameEndDate:yyyy-MM-dd} revealed={_isAnswerRevealed} visible={_currentVisibleBars}/{_currentTotalBars}");
+
+            var daily = _dbService.GetStockData(SelectedStock, startDate: "19900101",
+                                                endDate: "20251231", limit: 10000);
+
+            List<StockData> pastBars, futureBars;
+
+            if (SelectedPeriod == KLinePeriod.Day)
+            {
+                // ★ 未来段按日期截断：只含不超过本局结束日的部分（切周期不改变游戏的时间跨度）
+                pastBars = daily.Where(d => d.Date <= curDate).ToList();
+                futureBars = daily.Where(d => d.Date > curDate && d.Date <= gameEndDate).ToList();
+            }
+            else
+            {
+                // 完整周期K线（指标在全量历史上有充分预热）
+                var periodBars = KLineAggregator.ToPeriod(daily, SelectedPeriod);
+                IndicatorCalculator.Fill(periodBars);
+
+                // 决策周期 = 第一个 Date >= curDate 的K线（周期K线 Date 取期内最后交易日）
+                int decisionIdx = periodBars.FindIndex(w => w.Date >= curDate);
+                if (decisionIdx < 0)
+                {
+                    RollbackPeriod(oldPeriod,
+                        $"在{PeriodName(SelectedPeriod)}线序列中找不到 {curDate:yyyy-MM} 附近的K线" +
+                        $"（该股票{PeriodName(SelectedPeriod)}线数据范围为 {periodBars.First().Date:yyyy-MM} ~ {periodBars.Last().Date:yyyy-MM}）");
+                    return;
+                }
+
+                // ★ 决策周期截断到 curDate：Close 精确等于当前价，且不泄露未来
+                TruncatePeriodBar(periodBars[decisionIdx], daily, PeriodStartOf(curDate, SelectedPeriod), curDate);
+
+                // ★ 未来段 = curDate 之后、且不晚于本局结束日"开始"的周期；
+                //   最后一根若跨越结束日，截断到结束日（Close=本局最后收盘价）
+                futureBars = new List<StockData>();
+                for (int i = decisionIdx + 1; i < periodBars.Count; i++)
+                {
+                    var p = periodBars[i];
+                    DateTime pStart = PeriodStartOf(p.Date, SelectedPeriod);
+                    if (pStart > gameEndDate) break;
+                    if (p.Date > gameEndDate)
+                        TruncatePeriodBar(p, daily, pStart, gameEndDate);
+                    futureBars.Add(p);
+                }
+
+                pastBars = periodBars.Take(decisionIdx + 1).ToList();
+            }
+
+            // ★ 保留训练进度：按"未来段完成比例"映射新旧周期的可见根数，
+            //   切换后剩余根数 = 新周期未来段 × (1 − 进度)，不再重置为满额
+            // ★ 新窗口 = [训练段 + 同日期范围内的未来段]。
+            //   已推进的未来段在新周期里自然落入"训练段"（日期≤curDate），
+            //   当前价 = 决策周期收盘价（截断保证 = 旧周期现价），盈亏三周期一致。
+            int newTrainBars = TrainingBarsForPeriod;
+
+            // ★ 未来段按目标周期的名义值封顶（日150/周50/月12）：
+            //    月/周线出生的局切到日线时，未来段只给150天而非整个12个月跨度
+            int nominalFuture = TotalBarsForPeriodFor(SelectedPeriod) - newTrainBars;
+            if (futureBars.Count > nominalFuture)
+                futureBars = futureBars.Take(nominalFuture).ToList();
+
+            int pastTake = Math.Min(newTrainBars, pastBars.Count);
+
+            // 真实历史低于下限才回滚（次新股上市时间太短，练无可练）
+            if (pastBars.Count < MinPastBarsFor(SelectedPeriod))
+            {
+                RollbackPeriod(oldPeriod,
+                    $"决策点（{curDate:yyyy-MM}）之前只有 {pastBars.Count} 根{PeriodName(SelectedPeriod)}K，" +
+                    $"低于训练所需下限 {MinPastBarsFor(SelectedPeriod)} 根");
+                return;
+            }
+
+            // 未来段已耗尽（旧局练完）→ 直接结算
+            // 未来段为 0（剩余时间全在当前决策周期内，如月底最后几天）：
+            // 不弹结算，整窗显示（needVisible 已处理），剩余显示 0；
+            // 用户可切回更细周期走完尾巴，或自己点"结束训练并结算"
+
+            int newTotal = pastTake + futureBars.Count;
+            // 未揭示：可见=pastTake（当前价=决策周期收盘）；已揭示或未来段耗尽：显示全部
+            int needVisible = (wasRevealed || futureBars.Count == 0) ? newTotal : pastTake;
+            Debug.WriteLine($"[DIAG] Switch built: past={pastBars.Count} future={futureBars.Count} pastTake={pastTake} newTotal={newTotal} visible={needVisible}");
+
+            // 记录本局实际总根数（推进上限/剩余根数/结算都走它）
+            _currentTotalBars = newTotal;
+            if (SelectedPeriod == KLinePeriod.Month)
+                _monthTotalBars = newTotal;
+            OnPropertyChanged(nameof(TotalBarsForPeriod));
+            _trainStartBarIdx = pastTake - 1;   // 训练起点（短历史窗口时随实际上限前移）
+
+            _currentDataList = pastBars.Skip(pastBars.Count - pastTake)
+                                       .Concat(futureBars.Take(newTotal - pastTake))
+                                       .ToList();
+
+            _startDate = _currentDataList[0].Date;
+            OnPropertyChanged(nameof(StartDate));
+
+            // ★ 周期切换 = 同一局训练换个视角：保留持仓/资金/统计/流水，只清图表标记
+            // ★ 周期切换 = 同一局训练换个视角：保留持仓/资金/统计/流水
+            _holdWatchClicks = 0;
+            StopPlay();
+
+            // B/S 标记：按日期映射到新窗口（首个 Date >= 标记日期的周期K线 = 包含该日期的K线）
+            _tradeMarkers.Clear();
+            foreach (var (type, date) in markerDates)
+            {
+                int idx = _currentDataList.FindIndex(b => b.Date >= date);
+                if (idx < 0) idx = _currentDataList.Count - 1;
+                if (idx >= 0)
+                    _tradeMarkers.Add(new TradeMarker { BarIndex = idx, Type = type });
+            }
+
+            // "开始"线：同样按日期重新定位（边界线 = 该日期所在K线的左边缘）
+            if (startMarkerDate.HasValue)
+            {
+                int si = _currentDataList.FindIndex(b => b.Date >= startMarkerDate.Value);
+                _startMarkerIndex = (si >= 0 ? si : _currentDataList.Count) - 0.5;
+            }
+            else
+            {
+                _startMarkerIndex = -1;
+            }
+            IsBuyOptionsVisible = false;
+            IsSellOptionsVisible = false;
+            // T+1 视为已满足（实际已过至少一天）：重置买入K线标记，解冻卖出
+            _buyBarIndex = _hasPosition ? 0 : -1;
+            RebuildBuyItems();
+            RebuildSellItems();
+            _isAnswerRevealed = wasRevealed;
+            _currentVisibleBars = Math.Min(needVisible, _currentDataList.Count);   // ← 进度保留在这
+
+            // 状态栏同步显示剩余
+            TrainingStatus = $"训练模式：已推进 {_currentVisibleBars}/{newTotal}，剩余 {newTotal - _currentVisibleBars} 根";
+
+            UpdatePriceChart();
+            UpdateVolChart();
+            UpdateMacdChart();
+            UpdateInfoBar();
+            NotifyAllStats();
+            CommandManager.InvalidateRequerySuggested();
+        }
+
+
+        /// <summary>周期切换失败时回滚按钮状态，并弹出带诊断信息的提示（reason = 具体原因）</summary>
+        private void RollbackPeriod(KLinePeriod oldPeriod, string reason)
+        {
+            string targetName = PeriodName(SelectedPeriod);
+            SelectedPeriod = oldPeriod;
+            OnPropertyChanged(nameof(IsPeriodDay));
+            OnPropertyChanged(nameof(IsPeriodWeek));
+            OnPropertyChanged(nameof(IsPeriodMonth));
+            MessageBox.Show($"{SelectedStock} 无法切换到{targetName}线：\n\n{reason}",
+                "周期切换失败", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        /// <summary>周期K线所属周期的起始日（月线=当月1号，周线=自然周一）</summary>
+        private static DateTime PeriodStartOf(DateTime date, KLinePeriod period) => period == KLinePeriod.Month
+            ? new DateTime(date.Year, date.Month, 1)
+            : date.AddDays(-(((int)date.DayOfWeek + 6) % 7)).Date;
+
+        /// <summary>
+        /// 把周期K线截断到指定日期：只聚合 [periodStart, cutDate] 的交易日，
+        /// Close = cutDate 当天收盘（= 当前价），Date = cutDate 当天，不泄露未来。
+        /// </summary>
+        private static void TruncatePeriodBar(StockData bar, List<StockData> daily, DateTime periodStart, DateTime cutDate)
+        {
+            var seg = daily.Where(d => d.Date >= periodStart && d.Date <= cutDate).ToList();
+            if (seg.Count == 0) return;
+            bar.Open = seg[0].Open;
+            bar.High = seg.Max(x => x.High);
+            bar.Low = seg.Min(x => x.Low);
+            bar.Close = seg[seg.Count - 1].Close;
+            bar.Volume = seg.Sum(x => x.Volume);
+            bar.Date = seg[seg.Count - 1].Date;
+        }
+
+        /// <summary>按当前周期取K线序列：日线直接返回；周线由日线聚合并重新计算指标</summary>
+        private List<StockData> LoadPeriodSeries(string code)
+        {
+            // 先取全量日线再聚合，保证切出的窗口前面有充足的指标预热数据
+            var daily = _dbService.GetStockData(code, startDate: "19900101",
+                                                endDate: "20251231", limit: 10000);
+            if (SelectedPeriod == KLinePeriod.Day) return daily;
+
+            var periodBars = KLineAggregator.ToPeriod(daily, SelectedPeriod);
+            IndicatorCalculator.Fill(periodBars);
+            return periodBars;
+        }
+
         private void LoadStockList()
         {
             var stocks = _dbService.GetAllStockCodes();
             StockList.Clear();
             foreach (var s in stocks) StockList.Add(s);
 
-            _validStockList = stocks.Where(code =>
-            {
-                var data = _dbService.GetStockData(code, startDate: "19900101", endDate: "20251231", limit: 10000);
-                return data.Count >= _totalBars;
-            }).ToList();
+            // 一条 GROUP BY 拿全部日线根数（原实现：1356 只 × 全量拉数据只为数个数，启动极慢）
+            _stockDailyCounts.Clear();
+            foreach (var kv in _dbService.GetDailyBarCounts())
+                _stockDailyCounts[kv.Key] = kv.Value;
+            _eligibleCache.Clear();
 
-            Debug.WriteLine($"[DIAG] LoadStockList: {stocks.Count} stocks loaded, {_validStockList.Count} valid");
+            Debug.WriteLine($"[DIAG] LoadStockList: {stocks.Count} stocks loaded");
+        }
+
+        /// <summary>周期中文名（提示文案用）</summary>
+        private static string PeriodName(KLinePeriod p) => p == KLinePeriod.Day ? "日" : p == KLinePeriod.Week ? "周" : "月";
+
+        /// <summary>各周期对应的最低日线根数门槛：日 270 / 周 850（约3.4年）/ 月 1584（约6.4年）</summary>
+        private int MinDailyBarsForPeriod(KLinePeriod period) => period switch
+        {
+            KLinePeriod.Week => WeekTotalBars * 5,      // 170周 × 5个交易日
+            KLinePeriod.Month => (TrainingBarsFor(KLinePeriod.Month) + MonthMinFutureBars) * 22,  // 66个月 ≈ 5.5年
+            _ => _totalBars,
+        };
+
+        /// <summary>按当前周期取合格股票池（惰性缓存，每个周期只筛一次）</summary>
+        private List<string> GetEligibleStocks()
+        {
+            if (_eligibleCache.TryGetValue(SelectedPeriod, out var cached))
+                return cached;
+
+            int need = MinDailyBarsForPeriod(SelectedPeriod);
+            var list = _stockDailyCounts.Where(kv => kv.Value >= need)
+                                        .Select(kv => kv.Key)
+                                        .ToList();
+            _eligibleCache[SelectedPeriod] = list;
+            return list;
         }
 
         private void LoadRandomStock()
@@ -338,40 +840,79 @@ namespace BaozhuKLineTrainer
             _startMarkerIndex = -1;
             ResetTrainingStats();
 
-            if (_validStockList.Count == 0)
+            // 按当前周期取合格池：日线用全池，周线≥3.4年，月线≥6.4年
+            var pool = GetEligibleStocks();
+            if (pool.Count == 0)
             {
-                MessageBox.Show($"数据库中没有一只股票拥有足够的历史数据（{_totalBars}根）");
+                MessageBox.Show($"数据库中没有一只股票拥有足够的{PeriodName(SelectedPeriod)}线历史数据（约需 {MinDailyBarsForPeriod(SelectedPeriod)} 根日线）");
                 return;
             }
 
-            string newStock;
-            if (_validStockList.Count == 1)
+            // 根数达标只代表"大概率合格"（长期停牌会少几根），保留多轮重试兜底
+            // 月线门槛放宽：60 训练 + 6 未来即可开局（未来段动态取 6~12）
+            int minBars = SelectedPeriod == KLinePeriod.Month
+                ? TrainingBarsForPeriod + MonthMinFutureBars
+                : TotalBarsForPeriodFor(SelectedPeriod);
+            List<StockData> series = new List<StockData>();
+            string newStock = "";
+            for (int attempt = 0; attempt < 20; attempt++)
             {
-                newStock = _validStockList[0];
+                if (pool.Count == 1)
+                {
+                    newStock = pool[0];
+                }
+                else
+                {
+                    do
+                    {
+                        newStock = pool[_random.Next(pool.Count)];
+                    } while (newStock == _selectedStock);
+                }
+
+                var allData = LoadPeriodSeries(newStock);
+                if (allData.Count >= minBars)
+                {
+                    series = allData;
+                    break;
+                }
+
+                if (attempt == 19)
+                {
+                    MessageBox.Show($"连续 20 只股票的{PeriodName(SelectedPeriod)}线数据都不足 {minBars} 根，无法开始训练");
+                    return;
+                }
+            }
+
+            // ★ 起点 +1 修正原 off-by-one（series 正好等于窗口长度时 Next(0) 会抛异常）
+            if (SelectedPeriod == KLinePeriod.Month)
+            {
+                // 月线未来段动态：决策起点后实际可用 6~12 根，练完提前结算
+                int startIndex = _random.Next(series.Count - minBars + 1);
+                int availFuture = series.Count - startIndex - TrainingBarsForPeriod;
+                int future = Math.Clamp(availFuture, MonthMinFutureBars, MonthTotalBars - TrainingBarsForPeriod);
+                _monthTotalBars = TrainingBarsForPeriod + future;
+                _currentDataList = series.Skip(startIndex).Take(_monthTotalBars).ToList();
+                _trainStartBarIdx = TrainingBarsForPeriod - 1;
+                _currentTotalBars = _monthTotalBars;
             }
             else
             {
-                do
-                {
-                    newStock = _validStockList[_random.Next(_validStockList.Count)];
-                } while (newStock == _selectedStock);
+                int startIndex = _random.Next(series.Count - TotalBarsForPeriodFor(SelectedPeriod) + 1);
+                _currentDataList = series.Skip(startIndex).Take(TotalBarsForPeriodFor(SelectedPeriod)).ToList();
+                _trainStartBarIdx = TrainingBarsForPeriod - 1;
+                _currentTotalBars = TotalBarsForPeriodFor(SelectedPeriod);
             }
+            OnPropertyChanged(nameof(TotalBarsForPeriod));
 
-            var allData = _dbService.GetStockData(newStock, startDate: "19900101", endDate: "20251231", limit: 10000);
+            // ★ 根因修复：新局窗口重建后必须重置可见根数，否则上一局的推进位置可能超出新窗口导致崩溃
+            _currentVisibleBars = TrainingBarsForPeriod;
 
-            if (allData.Count < _totalBars)
-            {
-                MessageBox.Show($"股票 {newStock} 数据不足 {_totalBars} 根");
-                return;
-            }
-
-            int maxStart = allData.Count - _totalBars;
-            int startIndex = _random.Next(maxStart);
-            _startDate = allData[startIndex].Date;
-            _currentDataList = allData.Skip(startIndex).Take(_totalBars).ToList();
-
+            _startDate = _currentDataList[0].Date;
             OnPropertyChanged(nameof(StartDate));
-            SelectedStock = newStock;
+            _selectedStock = newStock;              // ← 直接写字段，绕开 setter 里会触发的 LoadData()
+            OnPropertyChanged(nameof(SelectedStock));
+            OnPropertyChanged(nameof(CurrentStockCode));
+
             UpdatePriceChart();
             UpdateVolChart();
             UpdateMacdChart();
@@ -381,6 +922,12 @@ namespace BaozhuKLineTrainer
 
         public void LoadData()
         {
+            // 周线模式不支持按起止日期精确定位，直接随机换一局
+            if (SelectedPeriod != KLinePeriod.Day)
+            {
+                LoadRandomStock();
+                return;
+            }
             Debug.WriteLine($"[DIAG] LoadData called, SelectedStock={SelectedStock}");
             if (string.IsNullOrEmpty(SelectedStock)) return;
 
@@ -391,18 +938,18 @@ namespace BaozhuKLineTrainer
                 SelectedStock,
                 startDate: startDateStr,
                 endDate: "20251231",
-                limit: _totalBars);
+                limit: TotalBarsForPeriod);
 
             Debug.WriteLine($"[DIAG] Data loaded: {_currentDataList?.Count ?? 0} bars");
 
-            if (_currentDataList == null || _currentDataList.Count < _totalBars)
+            if (_currentDataList == null || _currentDataList.Count < TotalBarsForPeriod)
             {
-                Debug.WriteLine($"[DIAG] Data insufficient, fetching recent {_totalBars} bars before 2026");
+                Debug.WriteLine($"[DIAG] Data insufficient, fetching recent {TotalBarsForPeriod} bars before 2026");
                 var allData = _dbService.GetStockData(SelectedStock, endDate: "20251231", limit: 2000);
 
-                if (allData.Count >= _totalBars)
+                if (allData.Count >= TotalBarsForPeriod)
                 {
-                    _currentDataList = allData.Skip(allData.Count - _totalBars).Take(_totalBars).ToList();
+                    _currentDataList = allData.Skip(allData.Count - TotalBarsForPeriod).Take(TotalBarsForPeriod).ToList();
                     _startDate = _currentDataList[0].Date;
                     OnPropertyChanged(nameof(StartDate));
                     Debug.WriteLine($"[DIAG] Fetched recent {_currentDataList.Count} bars from {_startDate:yyyy-MM-dd}");
@@ -422,6 +969,8 @@ namespace BaozhuKLineTrainer
                 return;
             }
 
+            _currentTotalBars = _currentDataList.Count;
+            OnPropertyChanged(nameof(TotalBarsForPeriod));
             UpdatePriceChart();
             UpdateVolChart();
             UpdateMacdChart();
@@ -438,12 +987,10 @@ namespace BaozhuKLineTrainer
             Debug.WriteLine($"[DIAG] dataList count={dataList?.Count ?? 0}");
             if (dataList == null || dataList.Count == 0) return;
 
-            int windowStart = !_isAnswerRevealed ? Math.Max(0, _currentVisibleBars - _trainingBars) : 0;
             int windowEnd = !_isAnswerRevealed ? Math.Min(_currentVisibleBars, dataList.Count) : dataList.Count;
+            // ★ 保险：windowStart 不得超过 windowEnd（状态错位时 visibleCount 为负会导致 Enumerable.Range 抛异常）
+            int windowStart = !_isAnswerRevealed ? Math.Min(Math.Max(0, _currentVisibleBars - TrainingBarsForPeriod), windowEnd) : 0;
             int visibleCount = windowEnd - windowStart;
-
-            var spOhlcList = dataList.Select(d => d.ToOHLC()).ToList();
-            Debug.WriteLine($"[DIAG] spOhlcList count={spOhlcList.Count}, first={spOhlcList[0].Open}/{spOhlcList[0].High}/{spOhlcList[0].Low}/{spOhlcList[0].Close}");
 
             KlinePlot.Plot.Clear();
             Debug.WriteLine("[DIAG] Plot cleared");
@@ -550,7 +1097,7 @@ namespace BaozhuKLineTrainer
             KlinePlot.Plot.Grid.XAxisStyle.IsVisible = false;
 
             // ===== Y轴边距压缩：只留5%边距 =====
-                        // ===== Y轴边距压缩：只留5%边距 =====
+            // ===== Y轴边距压缩：只留5%边距 =====
             var visibleData = dataList.Skip(windowStart).Take(visibleCount).ToList();
             if (visibleData.Count > 0)
             {
@@ -559,17 +1106,14 @@ namespace BaozhuKLineTrainer
                 double range = yMax - yMin;
                 if (range <= 0) range = yMax * 0.01;
                 double padding = range * 0.05;
-                
+
                 // 设置 Left 轴（Plottables 绑定的默认轴）
                 KlinePlot.Plot.Axes.SetLimitsY(yMin - padding, yMax + padding);
-                
+
                 // ★ 关键：把数据范围同步给 Right 轴，右侧才会显示价格刻度
                 KlinePlot.Plot.Axes.Right.Min = yMin - padding;
                 KlinePlot.Plot.Axes.Right.Max = yMax + padding;
             }
-
-            Debug.WriteLine($"[DIAG] Before SetLimitsX: XRange={KlinePlot.Plot.Axes.GetLimits().XRange}");
-            KlinePlot.Plot.Axes.SetLimitsX(windowStart - 0.5, windowEnd - 0.5);
 
             Debug.WriteLine($"[DIAG] Before SetLimitsX: XRange={KlinePlot.Plot.Axes.GetLimits().XRange}");
             KlinePlot.Plot.Axes.SetLimitsX(windowStart - 0.5, windowEnd - 0.5);
@@ -603,7 +1147,7 @@ namespace BaozhuKLineTrainer
             KlinePlot.Plot.Grid.MajorLineColor = SPColor.FromHex("#F0F0F0");
             KlinePlot.Plot.Grid.MajorLineWidth = 0.5f;
 
-            
+
             // ===== 训练开始标记线（蓝色竖虚线）=====
             if (_isTrainingMode && _startMarkerIndex >= 0)
             {
@@ -720,8 +1264,9 @@ namespace BaozhuKLineTrainer
             var dataList = _currentDataList;
             if (dataList == null || dataList.Count == 0) return;
 
-            int windowStart = !_isAnswerRevealed ? Math.Max(0, _currentVisibleBars - _trainingBars) : 0;
             int windowEnd = !_isAnswerRevealed ? Math.Min(_currentVisibleBars, dataList.Count) : dataList.Count;
+            // ★ 保险：windowStart 不得超过 windowEnd（状态错位时 visibleCount 为负会导致 Enumerable.Range 抛异常）
+            int windowStart = !_isAnswerRevealed ? Math.Min(Math.Max(0, _currentVisibleBars - TrainingBarsForPeriod), windowEnd) : 0;
             int visibleCount = windowEnd - windowStart;
 
             VolPlot.Plot.Clear();
@@ -797,8 +1342,9 @@ namespace BaozhuKLineTrainer
             var dataList = _currentDataList;
             if (dataList == null || dataList.Count == 0) return;
 
-            int windowStart = !_isAnswerRevealed ? Math.Max(0, _currentVisibleBars - _trainingBars) : 0;
             int windowEnd = !_isAnswerRevealed ? Math.Min(_currentVisibleBars, dataList.Count) : dataList.Count;
+            // ★ 保险：windowStart 不得超过 windowEnd（状态错位时 visibleCount 为负会导致 Enumerable.Range 抛异常）
+            int windowStart = !_isAnswerRevealed ? Math.Min(Math.Max(0, _currentVisibleBars - TrainingBarsForPeriod), windowEnd) : 0;
             int visibleCount = windowEnd - windowStart;
 
             var visibleData = dataList.Skip(windowStart).Take(visibleCount).ToList();
@@ -942,6 +1488,9 @@ namespace BaozhuKLineTrainer
         {
             if (dataList == null || dataList.Count == 0) return;
 
+            // 月线跨度大，日期轴显示到月份即可
+            string dateFmt = SelectedPeriod == KLinePeriod.Month ? "yyyy-MM" : "MM-dd";
+
             int windowEnd = Math.Min(windowStart + visibleCount, dataList.Count);
             int actualVisible = windowEnd - windowStart;
             if (actualVisible <= 0) return;
@@ -958,13 +1507,13 @@ namespace BaozhuKLineTrainer
             {
                 int dataIndex = windowStart + i;
                 tickPositions.Add(dataIndex);
-                tickLabels.Add(dataList[dataIndex].Date.ToString("MM-dd"));
+                tickLabels.Add(dataList[dataIndex].Date.ToString(dateFmt));
             }
 
             if (tickPositions.Count == 0 || tickPositions.Last() != windowEnd - 1)
             {
                 tickPositions.Add(windowEnd - 1);
-                tickLabels.Add(dataList[windowEnd - 1].Date.ToString("MM-dd"));
+                tickLabels.Add(dataList[windowEnd - 1].Date.ToString(dateFmt));
             }
 
             var tickGen = new ScottPlot.TickGenerators.NumericManual(
@@ -1001,7 +1550,10 @@ namespace BaozhuKLineTrainer
             LowPrice = last.Low;
             TurnoverRate = "--"; // ← 如果数据库有换手率字段，把这里改成对应的属性名
             VolumeRatio = "--";
-            CurrentDate = last.Date.ToString("yyyy-MM-dd");
+            // 月线显示到月份
+            CurrentDate = SelectedPeriod == KLinePeriod.Month
+                ? last.Date.ToString("yyyy-MM")
+                : last.Date.ToString("yyyy-MM-dd");
 
             // 指标数值（取最后一根可见K线的值）
             MA5Value = last.MA5.HasValue ? last.MA5.Value.ToString("F2") : "--";
@@ -1033,24 +1585,27 @@ namespace BaozhuKLineTrainer
         {
             if ((DateTime.Now - _lastToggleTime).TotalMilliseconds < 500) return;
             _lastToggleTime = DateTime.Now;
+            StopPlay();
 
             _isTrainingMode = !_isTrainingMode;
             _isAnswerRevealed = false;
-            _currentVisibleBars = _trainingBars;
+            _currentVisibleBars = TrainingBarsForPeriod;
 
             if (_isTrainingMode)
             {
-                TrainingStatus = $"训练模式：预测后{_totalBars - _trainingBars}根K线走势";
+                TrainingStatus = $"训练模式：预测后{TotalBarsForPeriod - TrainingBarsForPeriod}根K线走势";
 
                 if (!string.IsNullOrEmpty(SelectedStock))
                 {
-                    var allData = _dbService.GetStockData(SelectedStock, limit: 2000);
+                    var allData = LoadPeriodSeries(SelectedStock);
 
-                    if (allData.Count >= _totalBars)
+                    if (allData.Count >= TotalBarsForPeriod)
                     {
-                        _currentDataList = allData.Skip(allData.Count - _totalBars).Take(_totalBars).ToList();
+                        _currentDataList = allData.Skip(allData.Count - TotalBarsForPeriod).Take(TotalBarsForPeriod).ToList();
                         _startDate = _currentDataList[0].Date;
                         OnPropertyChanged(nameof(StartDate));
+                        _trainStartBarIdx = TrainingBarsForPeriod - 1;   // 训练起点 = 本周期训练窗口末根
+                        _currentTotalBars = TotalBarsForPeriodFor(SelectedPeriod);
                         UpdatePriceChart();
                         UpdateVolChart();
                         UpdateMacdChart();
@@ -1059,7 +1614,7 @@ namespace BaozhuKLineTrainer
                     }
                     else
                     {
-                        MessageBox.Show($"当前股票历史数据不足 {_totalBars} 根，无法训练");
+                        MessageBox.Show($"当前股票历史数据不足 {TotalBarsForPeriodFor(SelectedPeriod)} 根，无法训练");
                         _isTrainingMode = false;
                         TrainingStatus = "浏览模式";
                     }
@@ -1082,6 +1637,7 @@ namespace BaozhuKLineTrainer
             _isAnswerRevealed = true;
             TrainingStatus = "答案已揭示";
             StopTimer();
+            StopPlay();
             UpdatePriceChart();
             UpdateVolChart();
             UpdateMacdChart();
@@ -1097,7 +1653,7 @@ namespace BaozhuKLineTrainer
             {
                 _isTrainingMode = true;
                 _isAnswerRevealed = false;
-                _currentVisibleBars = _trainingBars;
+                _currentVisibleBars = TrainingBarsForPeriod;
 
                 if (_currentDataList == null || _currentDataList.Count == 0)
                 {
@@ -1107,11 +1663,22 @@ namespace BaozhuKLineTrainer
                 }
 
                 _startMarkerIndex = _currentVisibleBars - 0.5;
+                _trainStartBarIdx = TrainingBarsForPeriod - 1;   // 训练起点 = 本周期训练窗口末根
+                _currentTotalBars = _currentDataList.Count;      // 浏览窗口即本局窗口
                 StartTimer();
             }
             else
             {
-                if (_currentVisibleBars >= _totalBars) return;
+                if (_currentVisibleBars >= TotalBarsForPeriod) return;
+
+                // ★ 周线模式：点满一个交易周（5次）才推进一根周K
+                _holdWatchClicks++;
+                if (_holdWatchClicks < ClicksPerStep)
+                {
+                    TrainingStatus = $"训练模式：本周第 {_holdWatchClicks}/{ClicksPerStep} 天，K线未推进";
+                    return;   // 本周还没走完，不推进、不计统计
+                }
+                _holdWatchClicks = 0;
                 _currentVisibleBars++;
 
                 if (_hasPosition)
@@ -1124,17 +1691,18 @@ namespace BaozhuKLineTrainer
                     _watchDays++;
                 }
             }
-
-            UpdatePriceChart();
+            if (CheckLiquidation()) return;
+            if (!CheckStopTriggers())
+                UpdatePriceChart();
             UpdateVolChart();
             UpdateMacdChart();
             UpdateInfoBar();
             NotifyAllStats();
 
-            int remaining = _totalBars - _currentVisibleBars;
+            int remaining = TotalBarsForPeriod - _currentVisibleBars;
             if (remaining > 0)
             {
-                TrainingStatus = $"训练模式：已推进 {_currentVisibleBars}/{_totalBars}，剩余 {remaining} 根";
+                TrainingStatus = $"训练模式：已推进 {_currentVisibleBars}/{TotalBarsForPeriod}，剩余 {remaining} 根";
                 CommandManager.InvalidateRequerySuggested();
             }
             else
@@ -1143,23 +1711,69 @@ namespace BaozhuKLineTrainer
             }
         }
 
-        private bool CanBuy() => _isTrainingMode && !_isAnswerRevealed && !_hasPosition && _currentVisibleBars < _totalBars;
+        private bool CanBuy()
+        {
+            if (!_isTrainingMode || _isAnswerRevealed || _currentVisibleBars >= TotalBarsForPeriod)
+                return false;
+
+            // 非分仓模式：无持仓才能买（买入金额 = 满仓上限，含杠杆）
+            if (!_config.IsSplitPosition)
+                return !_hasPosition;
+
+            // 分仓模式：只要没买到上限（本金×比例×杠杆），就可以继续买
+            return _holdBuyAmount < MaxPositionAmount - 0.01;
+        }
 
         private void ExecuteBuy()
+        {
+            IsSellOptionsVisible = false;
+
+            if (_config.IsSplitPosition)
+            {
+                IsBuyOptionsVisible = !IsBuyOptionsVisible;
+                return;
+            }
+
+            // 非分仓模式：B = 一次性满仓买入（上限 = 本金 × 杠杆）
+            ExecuteSplitBuy(100);
+        }
+
+        private void ExecuteSplitBuy(int percent)
         {
             if (!CanBuy()) return;
 
             double price = GetCurrentPrice();
             if (price <= 0) return;
 
-            double buyAmount = _cash / (1 + FeeRate);
+            // percent = 目标仓位占"最大允许持仓"的百分比（100 = 满仓）
+            double wantAmount = MaxPositionAmount * percent / 100.0;
+            double allocatedCash = wantAmount - _holdBuyAmount;   // 本次投入的现金（含手续费）
+            allocatedCash = Math.Min(allocatedCash, MaxPositionAmount - _holdBuyAmount);
+            if (allocatedCash <= 0.01) return;
+
+            // ★ 杠杆下允许现金为负（负数 = 融资借款），不再用 _cash 截断
+            double buyAmount = allocatedCash / (1 + FeeRate);
             double fee = buyAmount * FeeRate;
 
-            _holdBuyAmount = buyAmount;
-            _avgCostPrice = price;
+            bool wasEmpty = !_hasPosition;
+
+            if (_hasPosition && _avgCostPrice.HasValue)
+            {
+                double totalAmount = _holdBuyAmount + buyAmount;
+                _avgCostPrice = (_holdBuyAmount * _avgCostPrice.Value + buyAmount * price) / totalAmount;
+                _holdBuyAmount = totalAmount;
+            }
+            else
+            {
+                _holdBuyAmount = buyAmount;
+                _avgCostPrice = price;
+            }
+
             _buyBarIndex = _currentVisibleBars;
-            _cash = 0;
-            _openCount++;
+            _cash -= allocatedCash;
+
+            if (wasEmpty) _openCount++;
+
             _tradeMarkers.Add(new TradeMarker { BarIndex = _currentVisibleBars - 1, Type = "B" });
 
             TradeRecords.Insert(0, new TradeRecord
@@ -1169,47 +1783,218 @@ namespace BaozhuKLineTrainer
                 Price = price,
                 Profit = "100.00%"
             });
-
+            UpdatePriceChart();
+            RebuildBuyItems();
+            RebuildSellItems();
             NotifyAllStats();
             CommandManager.InvalidateRequerySuggested();
+            IsBuyOptionsVisible = false;
         }
 
-        private bool CanSell() => _isTrainingMode && !_isAnswerRevealed && _hasPosition && _currentVisibleBars > _buyBarIndex + 1;
+        // ===== 根据当前持仓动态生成买入档位（只显示还没买到的档）=====
+        private void RebuildBuyItems()
+        {
+            SplitBuyItems.Clear();
+            if (!_config.IsSplitPosition) return;
 
-        private void ExecuteSell()
+            // 固定 10 档，每档 = 最大持仓的 1/10（与杠杆、分仓比例无关）
+            int currentTenths = (int)Math.Round(_holdBuyAmount / (MaxPositionAmount / 10));
+            currentTenths = Math.Max(0, Math.Min(currentTenths, 10));
+
+            for (int i = currentTenths + 1; i <= 10; i++)
+            {
+                SplitBuyItems.Add(new SplitBuyItem
+                {
+                    Index = i - currentTenths,
+                    Text = i == 10 ? "加至满仓" : $"加至{i}/10仓",
+                    Percent = i * 10
+                });
+            }
+        }
+
+        // ===== 根据当前持仓动态生成卖出档位 =====
+        private void RebuildSellItems()
+        {
+            SplitSellItems.Clear();
+            if (!_config.IsSplitPosition) return;
+
+            int currentTenths = (int)Math.Round(_holdBuyAmount / (MaxPositionAmount / 10));
+            currentTenths = Math.Max(0, Math.Min(currentTenths, 10));
+
+            for (int i = currentTenths - 1; i >= 1; i--)
+            {
+                SplitSellItems.Add(new SplitBuyItem
+                {
+                    Index = currentTenths - i,
+                    Text = $"减至{i}/10仓",
+                    Percent = i * 10
+                });
+            }
+
+            if (currentTenths > 0)
+            {
+                SplitSellItems.Add(new SplitBuyItem
+                {
+                    Index = currentTenths,
+                    Text = "清仓",
+                    Percent = 0
+                });
+            }
+        }
+
+        // ===== 分档卖出：percent = 目标持仓档位（0 = 清仓）=====
+        private void ExecuteSplitSell(int percent)
         {
             if (!CanSell()) return;
 
             double price = GetCurrentPrice();
-            if (price <= 0 || !_avgCostPrice.HasValue) return;
+            if (price <= 0 || !_avgCostPrice.HasValue || !_hasPosition) return;
 
-            double marketValue = _holdBuyAmount * (price / _avgCostPrice.Value);
-            double fee = marketValue * FeeRate;
-            double netCash = marketValue - fee;
-            double profit = marketValue - _holdBuyAmount - (_holdBuyAmount * FeeRate) - fee;
             double profitPct = (price - _avgCostPrice.Value) / _avgCostPrice.Value * 100;
 
-            _cash = netCash;
-            _tradeMarkers.Add(new TradeMarker { BarIndex = _currentVisibleBars - 1, Type = "S" });
-            _closedProfitAmount += profit;
-            _closedCostAmount += _holdBuyAmount;
+            double targetAmount = Math.Max(0, Math.Min(
+    MaxPositionAmount * (percent / 100.0), _holdBuyAmount));
+            double sellAmount = _holdBuyAmount - targetAmount;
+            if (sellAmount <= 0.01) { IsSellOptionsVisible = false; return; }
 
+            double totalMarketValue = _holdBuyAmount * (price / _avgCostPrice.Value);
+            double sellMarketValue = totalMarketValue * (sellAmount / _holdBuyAmount);
+            double fee = sellMarketValue * FeeRate;
+            double profit = sellMarketValue - sellAmount - fee - (sellAmount * FeeRate);
+
+            _cash += sellMarketValue - fee;
+            _closedProfitAmount += profit;
+            _closedCostAmount += sellAmount;
             if (profit > 0) _profitCount++;
+
+            if (targetAmount <= 0.01)
+            {
+                _holdBuyAmount = 0;
+                _avgCostPrice = null;
+                _buyBarIndex = -1;
+                IsSellOptionsVisible = false;
+            }
+            else
+            {
+                _holdBuyAmount = targetAmount;
+            }
+
+            _tradeMarkers.Add(new TradeMarker { BarIndex = _currentVisibleBars - 1, Type = "S" });
 
             TradeRecords.Insert(0, new TradeRecord
             {
-                Type = "卖出",
+                Type = targetAmount <= 0.01 ? "卖出(清仓)" : "卖出",
                 Date = GetCurrentDate(),
                 Price = price,
                 Profit = profitPct.ToString("F2") + "%"
             });
 
+            RebuildBuyItems();
+            RebuildSellItems();
+            NotifyAllStats();
+            UpdatePriceChart();
+            CommandManager.InvalidateRequerySuggested();
+            IsSellOptionsVisible = false;
+        }
+
+        // ===== 爆仓：总爆竹跌破初始本金的 10% 时强制清仓并结算 =====
+        private const double LiquidationRatio = 0.10;
+
+        private bool CheckLiquidation()
+        {
+            if (!_isTrainingMode || _isAnswerRevealed || !_hasPosition) return false;
+            if (TotalFirecrackers > _initialFirecrackers * LiquidationRatio) return false;
+
+            double price = GetCurrentPrice();
+            if (price > 0 && _avgCostPrice.HasValue)
+            {
+                double marketValue = _holdBuyAmount * (price / _avgCostPrice.Value);
+                double fee = marketValue * FeeRate;
+                double profit = marketValue - _holdBuyAmount - fee - (_holdBuyAmount * FeeRate);
+
+                _cash += marketValue - fee;
+                _closedProfitAmount += profit;
+                _closedCostAmount += _holdBuyAmount;
+                if (profit > 0) _profitCount++;
+
+                _tradeMarkers.Add(new TradeMarker { BarIndex = _currentVisibleBars - 1, Type = "S" });
+
+                TradeRecords.Insert(0, new TradeRecord
+                {
+                    Type = "爆仓强平",
+                    Date = GetCurrentDate(),
+                    Price = price,
+                    Profit = ((price - _avgCostPrice.Value) / _avgCostPrice.Value * 100).ToString("F2") + "%"
+                });
+            }
+
+            _holdBuyAmount = 0;
+            _avgCostPrice = null;
+            _buyBarIndex = -1;
+            RebuildBuyItems();
+            RebuildSellItems();
+            NotifyAllStats();
+
+            MessageBox.Show(
+                $"💥 爆仓！\n\n总爆竹已跌破初始本金 {_initialFirecrackers:F2} 的 10%，持仓被强制平仓。",
+                "爆仓", MessageBoxButton.OK, MessageBoxImage.Warning);
+
+            ExecuteSettle();   // 走正常结算流程（出结算弹窗）
+            return true;
+        }
+
+        // ===== 止盈/止损：持仓盈亏达到设定阈值时自动全仓卖出 =====
+        private bool CheckStopTriggers()
+        {
+            if (!_isTrainingMode || _isAnswerRevealed || !_hasPosition) return false;
+            if (!_avgCostPrice.HasValue || _avgCostPrice.Value <= 0) return false;
+
+            double price = GetCurrentPrice();
+            if (price <= 0) return false;
+
+            double profitPct = (price - _avgCostPrice.Value) / _avgCostPrice.Value * 100;
+
+            string? trigger = null;
+            if (_config.IsStopProfit && _config.StopProfitPercent > 0
+                && profitPct >= _config.StopProfitPercent)
+                trigger = "止盈卖出";
+            else if (_config.IsStopLoss && _config.StopLossPercent > 0
+                && profitPct <= -_config.StopLossPercent)
+                trigger = "止损卖出";
+
+            if (trigger == null) return false;
+
+            // 全仓卖出，费用计算与手动清仓完全一致
+            double marketValue = _holdBuyAmount * (price / _avgCostPrice.Value);
+            double fee = marketValue * FeeRate;
+            double profit = marketValue - _holdBuyAmount - fee - (_holdBuyAmount * FeeRate);
+
+            _cash += marketValue - fee;
+            _closedProfitAmount += profit;
+            _closedCostAmount += _holdBuyAmount;
+            if (profit > 0) _profitCount++;
+
+            _tradeMarkers.Add(new TradeMarker { BarIndex = _currentVisibleBars - 1, Type = "S" });
+
+            TradeRecords.Insert(0, new TradeRecord
+            {
+                Type = trigger,
+                Date = GetCurrentDate(),
+                Price = price,
+                Profit = profitPct.ToString("F2") + "%"
+            });
+
+            // 清空持仓
             _holdBuyAmount = 0;
             _avgCostPrice = null;
             _buyBarIndex = -1;
 
+            IsSellOptionsVisible = false;
+            RebuildBuyItems();
+            RebuildSellItems();
+            UpdatePriceChart();      // ← 新增：止盈/止损卖出后刷新图表，显示 S 标记
             NotifyAllStats();
-            CommandManager.InvalidateRequerySuggested();
+            return true;
         }
 
         private void ExecuteSettle()
@@ -1223,7 +2008,7 @@ namespace BaozhuKLineTrainer
                     double fee = marketValue * FeeRate;
                     double profit = marketValue - _holdBuyAmount - fee - (_holdBuyAmount * FeeRate);
 
-                    _cash = marketValue - fee;
+                    _cash += marketValue - fee;
                     _closedProfitAmount += profit;
                     _closedCostAmount += _holdBuyAmount;
                     if (profit > 0) _profitCount++;
@@ -1241,6 +2026,7 @@ namespace BaozhuKLineTrainer
             }
 
             StopTimer();
+            StopPlay();
             _isAnswerRevealed = true;
             TrainingStatus = "训练已结算";
             UpdatePriceChart();
@@ -1249,9 +2035,46 @@ namespace BaozhuKLineTrainer
             NotifyAllStats();
             CommandManager.InvalidateRequerySuggested();
 
+            // ===== 训练记录落库（首页统计/曲线的数据源）=====
+            try
+            {
+                int sIdx = Math.Max(0, _trainStartBarIdx);
+                int eIdx = Math.Min(_currentVisibleBars, _currentDataList.Count) - 1;
+                double startPrice = _currentDataList[sIdx].Close;
+                double endPrice = _currentDataList[eIdx].Close;
+
+                _dbService.SaveTrainingRecord(new TrainingRecordEntry
+                {
+                    TrainTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    StockCode = SelectedStock ?? "",
+                    StockName = SelectedStock != null ? _dbService.GetStockName(SelectedStock) : "",
+                    Period = SelectedPeriod.ToString(),
+                    StartDate = _currentDataList[sIdx].Date.ToString("yyyy-MM-dd"),
+                    EndDate = _currentDataList[eIdx].Date.ToString("yyyy-MM-dd"),
+                    InitialFirecrackers = _initialFirecrackers,
+                    FinalFirecrackers = TotalFirecrackers,
+                    ProfitAmount = TotalFirecrackers - _initialFirecrackers,
+                    ProfitPct = _initialFirecrackers > 0 ? (TotalFirecrackers - _initialFirecrackers) / _initialFirecrackers * 100 : 0,
+                    IntervalPct = startPrice > 0 ? (endPrice - startPrice) / startPrice * 100 : 0,
+                    OpenCount = _openCount,
+                    WinRate = _openCount > 0 ? (double)_profitCount / _openCount * 100 : 0,
+                    HoldDays = _holdDays,
+                    HeavyHoldDays = _heavyHoldDays,
+                    WatchDays = _watchDays,
+                    ElapsedSec = (int)_elapsed.TotalSeconds,
+                    Leverage = Math.Max(1, _config.Leverage),
+                    IsFullGame = _currentVisibleBars >= TotalBarsForPeriod ? 1 : 0,   // 打满整局=1，中途手动结算=0
+                    ConfigJson = ""
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[DIAG] 保存训练记录失败: {ex.Message}");
+            }
+
             ShowTrainingResult();
             _initialFirecrackers = TotalFirecrackers;
-            
+
         }
 
         private double GetCurrentPrice()
@@ -1268,6 +2091,48 @@ namespace BaozhuKLineTrainer
             int idx = Math.Min(_currentVisibleBars, _currentDataList.Count) - 1;
             if (idx < 0) idx = 0;
             return _currentDataList[idx].Date.ToString("yyyy-MM-dd");
+        }
+
+        private bool CanTogglePlay()
+        {
+            if (_isPlaying) return true;   // 播放中随时可以暂停
+            return _isTrainingMode && !_isAnswerRevealed && _currentVisibleBars < TotalBarsForPeriod;
+        }
+
+        private void TogglePlay()
+        {
+            if (_isPlaying) { StopPlay(); return; }
+            StartPlay();
+        }
+
+        private void StartPlay()
+        {
+            if (!_isTrainingMode || _isAnswerRevealed || _currentVisibleBars >= TotalBarsForPeriod) return;
+
+            _playTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1000.0 / PlaySpeed / ClicksPerStep) };
+            _playTimer.Tick += PlayTimer_Tick;
+            _playTimer.Start();
+            IsPlaying = true;
+            CommandManager.InvalidateRequerySuggested();
+        }
+
+        private void StopPlay()
+        {
+            _playTimer?.Stop();
+            _playTimer = null;
+            IsPlaying = false;
+            CommandManager.InvalidateRequerySuggested();
+        }
+
+        // 每次 Tick = 自动点一次"持有/观望"，交易仍可手动操作
+        private void PlayTimer_Tick(object? sender, EventArgs e)
+        {
+            if (_isAnswerRevealed || _currentVisibleBars >= TotalBarsForPeriod)
+            {
+                StopPlay();
+                return;
+            }
+            OnHoldOrWatch();
         }
 
         private void StartTimer()
@@ -1294,6 +2159,8 @@ namespace BaozhuKLineTrainer
 
         private void ResetTrainingStats()
         {
+            StopPlay();
+            _holdWatchClicks = 0;
             _cash = _initialFirecrackers;
             _holdBuyAmount = 0;
             _avgCostPrice = null;
@@ -1308,6 +2175,10 @@ namespace BaozhuKLineTrainer
             _elapsed = TimeSpan.Zero;
             TradeRecords.Clear();
             _tradeMarkers.Clear();
+            IsBuyOptionsVisible = false;
+            IsSellOptionsVisible = false;
+            RebuildBuyItems();
+            RebuildSellItems();
             NotifyAllStats();
         }
 
@@ -1334,6 +2205,9 @@ namespace BaozhuKLineTrainer
             OnPropertyChanged(nameof(ElapsedText));
             OnPropertyChanged(nameof(BuyBtnSubText));
             OnPropertyChanged(nameof(SellBtnSubText));
+            OnPropertyChanged(nameof(LeverageText));   // ← 新增
+            OnPropertyChanged(nameof(BorrowText));
+            OnPropertyChanged(nameof(BorrowBrush));
         }
 
         private DateTime _lastSyncTime = DateTime.MinValue;
@@ -1382,8 +2256,8 @@ namespace BaozhuKLineTrainer
             var dataList = _currentDataList;
             if (dataList == null || dataList.Count == 0) return;
 
-            int windowStart = !_isAnswerRevealed ? Math.Max(0, _currentVisibleBars - _trainingBars) : 0;
             int windowEnd = !_isAnswerRevealed ? Math.Min(_currentVisibleBars, dataList.Count) : dataList.Count;
+            int windowStart = !_isAnswerRevealed ? Math.Min(Math.Max(0, _currentVisibleBars - TrainingBarsForPeriod), windowEnd) : 0;
 
             if (x < windowStart - 0.5 || x > windowEnd - 0.5)
             {
@@ -1519,9 +2393,9 @@ namespace BaozhuKLineTrainer
 
         private void ShowTrainingResult()
         {
-            if (_currentDataList == null || _currentDataList.Count < _trainingBars) return;
+            if (_currentDataList == null || _currentDataList.Count == 0) return;
 
-            int startIdx = _trainingBars - 1;
+            int startIdx = _trainStartBarIdx;
             int endIdx = Math.Min(_currentVisibleBars, _currentDataList.Count) - 1;
             if (startIdx < 0 || endIdx < 0 || startIdx >= _currentDataList.Count) return;
 
@@ -1572,15 +2446,15 @@ namespace BaozhuKLineTrainer
             _isTrainingMode = false;
             _isAnswerRevealed = false;
             _startMarkerIndex = -1;
-            _currentVisibleBars = _trainingBars;
+            _currentVisibleBars = TrainingBarsForPeriod;
 
             LoadRandomStock();
 
-            if (_currentDataList != null && _currentDataList.Count >= _totalBars)
+            if (_currentDataList != null && _currentDataList.Count >= TotalBarsForPeriod)
             {
                 _isTrainingMode = true;
                 _isAnswerRevealed = false;
-                _currentVisibleBars = _trainingBars;
+                _currentVisibleBars = TrainingBarsForPeriod;
                 _startMarkerIndex = _currentVisibleBars - 0.5;
                 StartTimer();
 
@@ -1588,7 +2462,7 @@ namespace BaozhuKLineTrainer
                 UpdateVolChart();
                 UpdateMacdChart();
                 UpdateInfoBar();
-                TrainingStatus = $"训练模式：预测后{_totalBars - _trainingBars}根K线走势";
+                TrainingStatus = $"训练模式：预测后{TotalBarsForPeriod - TrainingBarsForPeriod}根K线走势";
                 NotifyAllStats();
                 CommandManager.InvalidateRequerySuggested();
             }
@@ -1596,15 +2470,29 @@ namespace BaozhuKLineTrainer
 
         private void ExitTraining()
         {
-            _isTrainingMode = false;
-            _isAnswerRevealed = false;
-            _startMarkerIndex = -1;
-            _currentVisibleBars = _trainingBars;
             StopTimer();
-            ResetTrainingStats();
-            TrainingStatus = "浏览模式";
-            LoadData();
-            Application.Current.Shutdown();
+            StopPlay();
+
+            // ★ 顺序很关键：必须先把首页显示出来，再关训练窗。
+            //   否则训练窗关闭瞬间"最后一个窗口"消失，WPF 立即启动退出流程，
+            //   之后再 new MainWindow 也拦不住（程序照样退出）。
+            var mainWindow = Application.Current.Windows.OfType<MainWindow>().FirstOrDefault();
+            if (mainWindow == null)
+            {
+                mainWindow = new MainWindow();   // 首页已不在 → 重建（Loaded 里会自动 RefreshHomeData）
+                mainWindow.Show();
+            }
+            else
+            {
+                mainWindow.RefreshHomeData();    // 首页一直在 → 手动刷新刚结算的这局
+            }
+            mainWindow.Activate();
+
+            // 最后关闭训练主窗口（KLineTrainWindow）
+            var trainWindow = Application.Current.Windows.OfType<KLineTrainWindow>().FirstOrDefault();
+            trainWindow?.Close();
+
+            Debug.WriteLine($"[DIAG] ExitTraining done, open windows: {string.Join(",", Application.Current.Windows.OfType<Window>().Select(w => w.GetType().Name))}");
         }
     }
 }
