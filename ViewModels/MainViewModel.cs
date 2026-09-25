@@ -499,19 +499,20 @@ namespace BaozhuKLineTrainer
             LoadStockList();
             _currentVisibleBars = TrainingBarsForPeriod;
 
-            // 本金滚动：新一局从"累计总爆竹"开局（10000 + 历史所有局盈亏之和），
-            // 与首页曲线最后一点严格一致；读取失败则回退 10000
+            // 本金滚动：新一局从"累计总爆竹"开局（10000 + 历史盈亏之和）；
+            // 累计 ≤ 0 = 破产：归零，训练结束
+            double latestTotal = 10000;
             try
             {
                 _dbService.EnsureTrainingRecordTable();
-                var (_, latestTotal) = _dbService.GetHomeSummary();
-                _initialFirecrackers = latestTotal;
+                var (_, t) = _dbService.GetHomeSummary();
+                latestTotal = t;
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[DIAG] 读取累计爆竹失败，按 10000 开局: {ex.Message}");
             }
-
+            _initialFirecrackers = Math.Max(0, latestTotal);   // 负数归零
             _cash = _initialFirecrackers;
             // 初始化分仓档位按钮（如50% → 1成~5成共5个按钮）
             IsBuyOptionsVisible = false;
@@ -1593,7 +1594,19 @@ namespace BaozhuKLineTrainer
 
             if (_isTrainingMode)
             {
-                TrainingStatus = $"训练模式：预测后{TotalBarsForPeriod - TrainingBarsForPeriod}根K线走势";
+                if (_isTrainingMode)
+                {
+                    if (_initialFirecrackers <= 0)
+                    {
+                        MessageBox.Show("🏁 本金已归零，训练结束！\n如需重新开局，请清空训练记录（重置账户）。",
+                            "训练结束", MessageBoxButton.OK, MessageBoxImage.Information);
+                        _isTrainingMode = false;
+                        return;
+                    }
+                }   // ……原有逻辑不动……
+
+
+                    TrainingStatus = $"训练模式：预测后{TotalBarsForPeriod - TrainingBarsForPeriod}根K线走势";
 
                 if (!string.IsNullOrEmpty(SelectedStock))
                 {
@@ -1651,6 +1664,12 @@ namespace BaozhuKLineTrainer
 
             if (!_isTrainingMode)
             {
+                if (_initialFirecrackers <= 0)             // ← 新增的守卫（共 6 行）
+                {
+                    MessageBox.Show("🏁 本金已归零，训练结束！\n如需重新开局，请清空训练记录（重置账户）。",
+                        "训练结束", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
                 _isTrainingMode = true;
                 _isAnswerRevealed = false;
                 _currentVisibleBars = TrainingBarsForPeriod;

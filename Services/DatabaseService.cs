@@ -247,7 +247,7 @@ namespace BaozhuKLineTrainer.Services
             double total = 10000;   // 起始本金
             while (reader.Read())
             {
-                total += reader.GetDouble(1);   // 每局盈亏额：正加负减
+                total = Math.Max(0, total + reader.GetDouble(1));   // 累计为负则归零（破产）   // 每局盈亏额：正加负减
                 list.Add((reader.GetString(0), total));
             }
             return list;
@@ -259,7 +259,7 @@ namespace BaozhuKLineTrainer.Services
             using var conn = new SqliteConnection(_connectionString);
             conn.Open();
             var cmd = new SqliteCommand(
-                "SELECT COUNT(*), COALESCE(10000 + (SELECT SUM(profit_amount) FROM cy_training_record), 10000) FROM cy_training_record", conn);
+                                                "SELECT COUNT(*), MAX(0, COALESCE(10000 + (SELECT SUM(profit_amount) FROM cy_training_record), 10000)) FROM cy_training_record", conn);
             using var reader = cmd.ExecuteReader();
             if (reader.Read())
                 return (reader.GetInt32(0), reader.GetDouble(1));
