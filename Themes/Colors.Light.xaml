@@ -1,0 +1,33 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Color x:Key="Bg.Window.Color">#F5F6F8</Color>
+    <SolidColorBrush x:Key="Bg.Window" Color="{StaticResource Bg.Window.Color}"/>
+    <Color x:Key="Bg.Card.Color">#FFFFFF</Color>
+    <SolidColorBrush x:Key="Bg.Card" Color="{StaticResource Bg.Card.Color}"/>
+    <Color x:Key="Bg.CardAlt.Color">#FAFBFD</Color>
+    <SolidColorBrush x:Key="Bg.CardAlt" Color="{StaticResource Bg.CardAlt.Color}"/>
+    <Color x:Key="Bg.Control.Color">#EEF1F6</Color>
+    <SolidColorBrush x:Key="Bg.Control" Color="{StaticResource Bg.Control.Color}"/>
+    <Color x:Key="Border.Subtle.Color">#DDE3EC</Color>
+    <SolidColorBrush x:Key="Border.Subtle" Color="{StaticResource Border.Subtle.Color}"/>
+    <Color x:Key="Border.Strong.Color">#B9C4D4</Color>
+    <SolidColorBrush x:Key="Border.Strong" Color="{StaticResource Border.Strong.Color}"/>
+
+    <Color x:Key="Fg.Primary.Color">#1B2430</Color>
+    <SolidColorBrush x:Key="Fg.Primary" Color="{StaticResource Fg.Primary.Color}"/>
+    <Color x:Key="Fg.Secondary.Color">#4A5568</Color>
+    <SolidColorBrush x:Key="Fg.Secondary" Color="{StaticResource Fg.Secondary.Color}"/>
+    <Color x:Key="Fg.Muted.Color">#8590A2</Color>
+    <SolidColorBrush x:Key="Fg.Muted" Color="{StaticResource Fg.Muted.Color}"/>
+
+    <Color x:Key="Accent.Pink.Color">#D848A0</Color>
+    <SolidColorBrush x:Key="Accent.Pink" Color="{StaticResource Accent.Pink.Color}"/>
+    <Color x:Key="Accent.Purple.Color">#8E44AD</Color>
+    <SolidColorBrush x:Key="Accent.Purple" Color="{StaticResource Accent.Purple.Color}"/>
+
+    <Color x:Key="Semantic.Profit.Color">#FF3232</Color>
+    <SolidColorBrush x:Key="Semantic.Profit" Color="{StaticResource Semantic.Profit.Color}"/>
+    <Color x:Key="Semantic.Loss.Color">#00A800</Color>
+    <SolidColorBrush x:Key="Semantic.Loss" Color="{StaticResource Semantic.Loss.Color}"/>
+</ResourceDictionary>

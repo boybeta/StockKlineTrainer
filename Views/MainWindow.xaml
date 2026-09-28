@@ -3,10 +3,19 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="clr-namespace:MaterialDesignThemes.Wpf;assembly=MaterialDesignThemes.Wpf"
         xmlns:scottplot="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
-        Title="爆竹K线训练助手" Width="1500" Height="960" WindowStartupLocation="CenterScreen" Background="#FCF8FC">
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="爆竹K线训练助手" Width="1500" Height="960" WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        Background="{DynamicResource Bg.Window}">
+
+    <WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="0" CornerRadius="0" GlassFrameThickness="0" ResizeBorderThickness="0"/>
+    </WindowChrome.WindowChrome>
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+
         <Style x:Key="CardStyle" TargetType="Border">
-            <Setter Property="Background" Value="White"/>
+            <Setter Property="Background" Value="{DynamicResource Bg.Card}"/>
             <Setter Property="CornerRadius" Value="10"/>
             <Setter Property="Padding" Value="16"/>
             <Setter Property="Margin" Value="8"/>
@@ -21,73 +30,329 @@
             <Setter Property="Padding" Value="14"/>
             <Setter Property="Margin" Value="0,6"/>
         </Style>
+
+        <!-- 导航分组头：图标+文字+箭头，展开时箭头旋转180° -->
+        <Style x:Key="NavGroupHeaderStyle" TargetType="ToggleButton">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Margin" Value="0,14,0,0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="{DynamicResource Fg.Secondary}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="6">
+                            <DockPanel Margin="8,0">
+                                <ContentPresenter DockPanel.Dock="Left" VerticalAlignment="Center"/>
+                                <materialDesign:PackIcon Kind="ChevronDown" Width="14" Height="14"
+                                                 Foreground="{DynamicResource Fg.Muted}" VerticalAlignment="Center"
+                                                 HorizontalAlignment="Right">
+                                    <materialDesign:PackIcon.RenderTransform>
+                                        <RotateTransform CenterX="7" CenterY="7"/>
+                                    </materialDesign:PackIcon.RenderTransform>
+                                    <materialDesign:PackIcon.Style>
+                                        <Style TargetType="materialDesign:PackIcon">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                                     Value="True">
+                                                    <Setter Property="RenderTransform">
+                                                        <Setter.Value>
+                                                            <RotateTransform Angle="180" CenterX="7" CenterY="7"/>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </materialDesign:PackIcon.Style>
+                                </materialDesign:PackIcon>
+                            </DockPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource Bg.Control}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 导航子项：缩进圆点+文字，默认透明，悬停浅灰；选中态由代码后置刷粉色 -->
+        <Style x:Key="NavItemStyle" TargetType="Border">
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Margin" Value="14,8,0,0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource Bg.Control}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="220"/>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="320"/>
         </Grid.ColumnDefinitions>
 
-        <!-- 左侧侧边导航栏 完全原样不变 -->
-        <Border Background="White" Margin="0,0,4,0" Padding="12" Width="227" HorizontalAlignment="Left">
-            <StackPanel Width="220">
-                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16" Padding="10" CornerRadius="10,10,10,10" Background="White" BorderBrush="#F7D8EE" BorderThickness="2" Width="204" HorizontalAlignment="Left">
+        <!-- ==================== 自绘标题栏（WindowStyle=None 后替代系统标题栏） ==================== -->
+        <Border Grid.Row="0" Grid.ColumnSpan="3" Background="{DynamicResource Bg.Window}"
+                MouseLeftButtonDown="TitleBar_MouseDown">
+            <Grid>
+                <TextBlock Text="爆竹K线训练助手" FontSize="12"
+                           Foreground="{DynamicResource Fg.Secondary}"
+                           VerticalAlignment="Center" Margin="12,0"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="BtnMinimize" Width="46" Height="32"
+                            Background="Transparent" BorderThickness="0" Cursor="Hand"
+                            ToolTip="最小化" Click="BtnMinimize_Click">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="{DynamicResource Bg.Control}"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <materialDesign:PackIcon Kind="WindowMinimize" Width="13" Height="13"
+                                                 Foreground="{DynamicResource Fg.Secondary}"/>
+                    </Button>
+                    <Button x:Name="BtnClose" Width="46" Height="32"
+                            Background="Transparent" BorderThickness="0" Cursor="Hand"
+                            ToolTip="关闭" Click="BtnClose_Click">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="#E81123"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <materialDesign:PackIcon Kind="Close" Width="13" Height="13"
+                                                 Foreground="{DynamicResource Fg.Secondary}"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ==================== 左侧侧边导航栏（重构：可折叠菜单 + 设置自然贴底） ==================== -->
+        <Border Grid.Row="1" Grid.Column="0" Background="{DynamicResource Bg.Card}" Margin="0,0,4,0" Padding="12" Width="227" HorizontalAlignment="Left">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <!-- 用户卡片 -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- 搜索框 -->
+                    <RowDefinition Height="*"/>
+                    <!-- 菜单（可滚动） -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- 设置（贴底） -->
+                </Grid.RowDefinitions>
+
+                <!-- ① 用户卡片：圆形头像 + 昵称 + 状态 -->
+                <Border Grid.Row="0" Style="{StaticResource CardStyle}" Margin="0,0,0,10" Padding="10"
+                        CornerRadius="10" Background="{DynamicResource Bg.Card}" BorderBrush="#F7D8EE" BorderThickness="2">
                     <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="AccountCircle" Width="48" Height="48" Foreground="#7744EE"/>
-                        <StackPanel Margin="10,0">
-                            <TextBlock Text="用户4438" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="胜兵先胜而后求战,..." FontSize="12" Foreground="#777777" TextWrapping="Wrap" Width="130"/>
+                        <Grid Width="48" Height="48">
+                            <Ellipse Fill="#EEEEEE"/>
+                            <!-- 无头像图片时露出默认图标 -->
+                            <materialDesign:PackIcon Kind="AccountCircle" Width="48" Height="48" Foreground="#7744EE"/>
+                            <!-- 头像：E:\baozhu\userdata\avatar.png 存在则覆盖上图标 -->
+                            <Ellipse>
+                                <Ellipse.Fill>
+                                    <ImageBrush x:Name="AvatarImage" Stretch="UniformToFill"/>
+                                </Ellipse.Fill>
+                            </Ellipse>
+                        </Grid>
+                        <StackPanel Margin="10,0" VerticalAlignment="Center">
+                            <TextBlock Text="用户4438" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource Fg.Primary}"/>
+                            <TextBlock Text="胜兵先胜而后求战,..." FontSize="12" Foreground="{DynamicResource Fg.Muted}"
+                                       TextWrapping="Wrap" Width="110"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>
 
-                <StackPanel Margin="0,0,0,12">
-                    <Border Padding="8,6" Cursor="Hand">
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="ChartLine" Width="18" Height="18" Foreground="#444444"/>
-                            <TextBlock Style="{StaticResource NavText}" Text="K线训练"/>
-                            <materialDesign:PackIcon Kind="ChevronDown" Width="14" Height="14" Foreground="#888888" HorizontalAlignment="Right"/>
-                        </StackPanel>
-                    </Border>
-                    <Border Background="#F7E6F7" CornerRadius="6" Padding="8,6" Margin="12,10,0,0" Height="32">
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Gamepad" Width="16" Height="16" Foreground="#D848A0"/>
-                            <TextBlock Style="{StaticResource NavText}" Text="模拟训练" Foreground="#D848A0"/>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
+                <!-- ② 搜索框 -->
+                <Border Grid.Row="1" Background="{DynamicResource Bg.Control}" CornerRadius="8" Height="36" Margin="0,0,0,8">
+                    <Grid Margin="10,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <materialDesign:PackIcon Kind="Magnify" Width="16" Height="16" Foreground="{DynamicResource Fg.Muted}"
+                                                 VerticalAlignment="Center"/>
+                        <TextBox Grid.Column="1" BorderThickness="0" Background="Transparent"
+                                 VerticalContentAlignment="Center" FontSize="12" Margin="8,0,0,0"
+                                 materialDesign:HintAssist.Hint="搜索股票 / 指数 / 期货 ..."/>
+                    </Grid>
+                </Border>
 
-                <StackPanel Margin="0,0,0,12">
-                    <Border Padding="8,6" Cursor="Hand">
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Sword" Width="18" Height="18" Foreground="#444444"/>
-                            <TextBlock Style="{StaticResource NavText}" Text="PK对战"/>
-                            <materialDesign:PackIcon Kind="ChevronDown" Width="14" Height="14" Foreground="#888888" HorizontalAlignment="Right"/>
-                        </StackPanel>
-                    </Border>
-                    <Border Padding="20,6" Cursor="Hand" Margin="0,6,0,0">
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="ChartBox" Width="16" Height="16" Foreground="#666666"/>
-                            <TextBlock Style="{StaticResource NavText}" Text="K线PK" Foreground="#666666"/>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
+                <!-- ③ 菜单区：5 个可折叠分组 -->
+                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,4,0,0">
+                    <StackPanel>
 
-                <StackPanel VerticalAlignment="Bottom" Margin="0,60,0,0">
-                    <Border Padding="8,6" Cursor="Hand" RenderTransformOrigin="1.139,0.373" Margin="0,553,0,0">
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Cog" Width="18" Height="18" Foreground="#444444"/>
-                            <TextBlock Style="{StaticResource NavText}" Text="设置"/>
+                        <!-- K线训练 -->
+                        <ToggleButton x:Name="GrpTrain" Style="{StaticResource NavGroupHeaderStyle}" IsChecked="True">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="ChartLine" Width="18" Height="18" Foreground="{DynamicResource Fg.Secondary}"/>
+                                <TextBlock Text="K线训练" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="15" FontWeight="SemiBold"  Foreground="{DynamicResource Fg.Primary}"/>
+                            </StackPanel>
+                        </ToggleButton>
+                        <StackPanel Visibility="{Binding IsChecked, ElementName=GrpTrain, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Border Style="{StaticResource NavItemStyle}" Background="#F7D8EE"
+                                    MouseLeftButtonUp="NavItem_Click" Tag="nav:SimTrain">
+                                <StackPanel Orientation="Horizontal" Margin="12,0">
+                                    <Ellipse Width="4" Height="4" Fill="#D848A0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="模拟训练" FontSize="13" Foreground="#D848A0"
+                                               Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource NavItemStyle}"
+                                    MouseLeftButtonUp="NavItem_Click" Tag="nav:AssignTrain">
+                                <StackPanel Orientation="Horizontal" Margin="12,0">
+                                    <Ellipse Width="4" Height="4" Fill="#999999" VerticalAlignment="Center"/>
+                                    <TextBlock Text="指定训练" FontSize="13" Foreground="{DynamicResource Fg.Secondary}"
+                                               Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource NavItemStyle}"
+                                    MouseLeftButtonUp="NavItem_Click" Tag="nav:Favorite">
+                                <StackPanel Orientation="Horizontal" Margin="12,0">
+                                    <Ellipse Width="4" Height="4" Fill="#999999" VerticalAlignment="Center"/>
+                                    <TextBlock Text="我的收藏" FontSize="13" Foreground="{DynamicResource Fg.Secondary}"
+                                               Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
-                    </Border>
-                </StackPanel>
-            </StackPanel>
+
+                        <!-- PK对战 -->
+                        <ToggleButton x:Name="GrpPK" Style="{StaticResource NavGroupHeaderStyle}" IsChecked="True">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Sword" Width="18" Height="18" Foreground="{DynamicResource Fg.Secondary}"/>
+                                <TextBlock Text="PK对战" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource Fg.Primary}"/>
+                            </StackPanel>
+                        </ToggleButton>
+                        <StackPanel Visibility="{Binding IsChecked, ElementName=GrpPK, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Border Style="{StaticResource NavItemStyle}"
+                                    MouseLeftButtonUp="NavItem_Click" Tag="nav:KlinePK">
+                                <StackPanel Orientation="Horizontal" Margin="12,0">
+                                    <Ellipse Width="4" Height="4" Fill="#999999" VerticalAlignment="Center"/>
+                                    <TextBlock Text="K线PK" FontSize="13" Foreground="{DynamicResource Fg.Secondary}"
+                                               Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- 预测选股 -->
+                        <ToggleButton x:Name="GrpPredict" Style="{StaticResource NavGroupHeaderStyle}" IsChecked="True">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="AutoFix" Width="18" Height="18" Foreground="{DynamicResource Fg.Secondary}"/>
+                                <TextBlock Text="预测选股" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource Fg.Primary}"/>
+                            </StackPanel>
+                        </ToggleButton>
+                        <StackPanel Visibility="{Binding IsChecked,ElementName=GrpPredict, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Border Style="{StaticResource NavItemStyle}"
+                                    MouseLeftButtonUp="NavItem_Click" Tag="nav:PredictUp">
+                                <StackPanel Orientation="Horizontal" Margin="12,0">
+                                    <Ellipse Width="4" Height="4" Fill="#999999" VerticalAlignment="Center"/>
+                                    <TextBlock Text="涨跌预测" FontSize="13" Foreground="{DynamicResource Fg.Secondary}"
+                                               Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource NavItemStyle}"
+                                    MouseLeftButtonUp="NavItem_Click" Tag="nav:PatternPick">
+                                <StackPanel Orientation="Horizontal" Margin="12,0">
+                                    <Ellipse Width="4" Height="4" Fill="#999999" VerticalAlignment="Center"/>
+                                    <TextBlock Text="形态选股" FontSize="13" Foreground="{DynamicResource Fg.Secondary}"
+                                               Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- 战法复盘 -->
+                        <ToggleButton x:Name="GrpReview" Style="{StaticResource NavGroupHeaderStyle}" IsChecked="True">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="NotebookOutline" Width="18" Height="18" Foreground="{DynamicResource Fg.Secondary}"/>
+                                <TextBlock Text="战法复盘" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource Fg.Primary}"/>
+                            </StackPanel>
+                        </ToggleButton>
+                        <StackPanel Visibility="{Binding IsChecked,ElementName=GrpReview, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Border Style="{StaticResource NavItemStyle}"
+                                    MouseLeftButtonUp="NavItem_Click" Tag="nav:Strategy">
+                                <StackPanel Orientation="Horizontal" Margin="12,0">
+                                    <Ellipse Width="4" Height="4" Fill="#999999" VerticalAlignment="Center"/>
+                                    <TextBlock Text="战法打磨" FontSize="13" Foreground="{DynamicResource Fg.Secondary}"
+                                               Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource NavItemStyle}"
+                                    MouseLeftButtonUp="NavItem_Click" Tag="nav:ReviewNote">
+                                <StackPanel Orientation="Horizontal" Margin="12,0">
+                                    <Ellipse Width="4" Height="4" Fill="#999999" VerticalAlignment="Center"/>
+                                    <TextBlock Text="复盘笔记" FontSize="13" Foreground="{DynamicResource Fg.Secondary}"
+                                               Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource NavItemStyle}"
+                                    MouseLeftButtonUp="NavItem_Click" Tag="nav:TradePlan">
+                                <StackPanel Orientation="Horizontal" Margin="12,0">
+                                    <Ellipse Width="4" Height="4" Fill="#999999" VerticalAlignment="Center"/>
+                                    <TextBlock Text="交易计划" FontSize="13" Foreground="{DynamicResource Fg.Secondary}"
+                                               Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource NavItemStyle}"
+                                    MouseLeftButtonUp="NavItem_Click" Tag="nav:Diary">
+                                <StackPanel Orientation="Horizontal" Margin="12,0">
+                                    <Ellipse Width="4" Height="4" Fill="#999999" VerticalAlignment="Center"/>
+                                    <TextBlock Text="实盘日记" FontSize="13" Foreground="{DynamicResource Fg.Secondary}"
+                                               Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- ④ 设置：Grid 最后一行自然贴底（替代原 Margin 硬编码） -->
+                <Border Grid.Row="3" Padding="8,6" Margin="0,8,0,0" CornerRadius="6" Cursor="Hand"
+                        Background="Transparent" MouseLeftButtonUp="NavItem_Click" Tag="nav:Setting">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Cog" Width="18" Height="18" Foreground="{DynamicResource Fg.Secondary}"/>
+                        <TextBlock Text="设置" Style="{StaticResource NavText}" Foreground="{DynamicResource Fg.Secondary}"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Border>
 
-        <!-- 中间主内容区域 -->
-        <Grid Grid.Column="1" Margin="4,0,4,0">
+        <!-- ==================== 中间主内容区域（以下保持原样不动） ==================== -->
+        <Grid Grid.Row="1" Grid.Column="1" Margin="4,0,4,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="380"/>
                 <RowDefinition Height="Auto"/>
@@ -117,7 +382,7 @@
                                     <ColumnDefinition Width="71*"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Text="模拟训练" FontSize="20" Foreground="White" FontWeight="SemiBold" Grid.ColumnSpan="2"/>
-                                <TextBlock  x:Name="TxtFirecracker" Text="爆竹: 10,000" FontSize="20" Foreground="White" HorizontalAlignment="Left" Grid.Column="1" Margin="28,0,0,0"/>
+                                <TextBlock x:Name="TxtFirecracker" Text="爆竹: 10,000" FontSize="16" Foreground="White" HorizontalAlignment="Left" Grid.Column="1" Margin="28,0,0,0"/>
                             </Grid>
                             <Grid Margin="0,30,0,24" Height="137">
                                 <Grid.ColumnDefinitions>
@@ -174,28 +439,87 @@
                     </Border>
                 </Border>
 
-                <!-- 右侧曲线卡片：内部统一用StackPanel承载多子元素，修复Child重复报错 -->
-                <Border Grid.Column="2" Style="{StaticResource CardStyle}" Margin="8,27,8,-195">
+                <!-- 右侧曲线卡片 -->
+                <Border Grid.Column="2" Style="{StaticResource CardStyle}" Margin="8,0,8,-330">
                     <StackPanel>
-                        <!-- 曲线独立布局区域 -->
                         <StackPanel>
                             <Grid>
                                 <StackPanel HorizontalAlignment="Center"/>
                             </Grid>
                             <Grid Margin="0,10">
-                                <TextBlock Text="爆竹数量曲线" FontSize="15"/>
-                                <TextBlock Text="暂无重置周期" FontSize="13" Foreground="#777777" HorizontalAlignment="Right"/>
+                                <TextBlock Text="爆竹数量曲线" FontSize="15" Foreground="{DynamicResource Fg.Primary}"/>
+                                <TextBlock Text="暂无重置周期" FontSize="13" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Right"/>
                             </Grid>
-                            <Border Background="#F8F8FA" Height="276" CornerRadius="6">
+                            <Border Background="{DynamicResource Bg.Control}" Height="276" CornerRadius="6">
                                 <Grid>
                                     <scottplot:WpfPlot x:Name="CurvePlot"/>
-                                    <TextBlock x:Name="TxtCurveEmpty" Text="暂无训练记录，训练一把试试" FontSize="14" Foreground="#999999"
-                   VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Name="TxtCurveEmpty" Text="暂无训练记录，训练一把试试" FontSize="14" Foreground="{DynamicResource Fg.Muted}"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                 </Grid>
                             </Border>
                         </StackPanel>
-                        <!-- 底部提示独立布局 -->
-                        <Border Background="#FFF0F8" CornerRadius="6" Margin="0,149,0,0" Padding="10,8" Panel.ZIndex="-4">
+
+                        <!-- 训练记录列表 -->
+                        <StackPanel Margin="0,14,0,0">
+                            <Grid Margin="0,0,0,6">
+                                <TextBlock Text="训练记录" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource Fg.Primary}"/>
+                                <TextBlock Text="最近 50 场" FontSize="12" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Right"/>
+                            </Grid>
+                            <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto">
+                                <ItemsControl x:Name="RecordList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{DynamicResource Bg.Card}" BorderBrush="#E8E8E8" BorderThickness="1" CornerRadius="8"
+                                                    Padding="12,10" Margin="0,4">
+                                                <StackPanel>
+                                                    <Grid>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Border Background="#4070F0" CornerRadius="3" Padding="5,2" VerticalAlignment="Center">
+                                                                <TextBlock Text="双盲训练" Foreground="White" FontSize="12"/>
+                                                            </Border>
+                                                            <TextBlock Text="{Binding StockName}" FontSize="12" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}"/>
+                                                            <TextBlock Text="{Binding StockCode}" FontSize="11" Foreground="{DynamicResource Fg.Muted}" Margin="6,0,0,0" VerticalAlignment="Center"/>
+
+                                                        </StackPanel>
+                                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                            <TextBlock Text="{Binding DataRangeText}" FontSize="11" Foreground="{DynamicResource Fg.Muted}" Margin="0,3,0,0"/>
+                                                            <materialDesign:PackIcon Kind="StarOutline" Width="14" Height="14" Foreground="#CCCCCC" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                    <UniformGrid Columns="5" Margin="0,8,0,0">
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding HoldRateText}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource Fg.Primary}"/>
+                                                            <TextBlock Text="持仓率" FontSize="12" Foreground="{DynamicResource Fg.Muted}" Margin="0,2,0,0"/>
+                                                        </StackPanel>
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding HeavyRateText}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource Fg.Primary}"/>
+                                                            <TextBlock Text="重仓率" FontSize="12" Foreground="{DynamicResource Fg.Muted}" Margin="0,2,0,0"/>
+                                                        </StackPanel>
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding OpenWinRateText}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource Fg.Primary}"/>
+                                                            <TextBlock Text="开仓胜率" FontSize="12" Foreground="{DynamicResource Fg.Muted}" Margin="0,2,0,0"/>
+                                                        </StackPanel>
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding IntervalText}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource Fg.Primary}"/>
+                                                            <TextBlock Text="区间涨跌幅" FontSize="12" Foreground="{DynamicResource Fg.Muted}" Margin="0,2,0,0"/>
+                                                        </StackPanel>
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding ProfitText}" FontSize="14" FontWeight="SemiBold" Foreground="{Binding ProfitBrush}"/>
+                                                            <TextBlock Text="盈亏" FontSize="12" Foreground="{DynamicResource Fg.Muted}" Margin="0,2,0,0"/>
+                                                        </StackPanel>
+                                                    </UniformGrid>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                            <TextBlock x:Name="TxtRecordEmpty" Text="暂无训练记录" Foreground="{DynamicResource Fg.Muted}" FontSize="12"
+                                       HorizontalAlignment="Center" Margin="0,16" Visibility="Collapsed"/>
+                        </StackPanel>
+
+                        <!-- 底部提示 -->
+                        <Border Background="#FFF0F8" CornerRadius="6" Margin="0,10,0,0" Padding="10,8" Panel.ZIndex="-4">
                             <Grid>
                                 <StackPanel Orientation="Horizontal">
                                     <Border Width="6" Height="6" Background="#E84070" CornerRadius="3" Margin="0,0,6,0"/>
@@ -217,14 +541,14 @@
                     <ColumnDefinition Width="249*"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- 训练按钮独立布局容器（内部StackPanel承载多按钮，无Child冲突） -->
+                <!-- 训练按钮 -->
                 <Border Style="{StaticResource CardStyle}" Margin="4,-86,307,0" Width="340" Grid.ColumnSpan="2">
                     <StackPanel>
                         <Border Style="{StaticResource TrainBtn}" Background="#4070F0">
                             <Grid>
                                 <StackPanel>
                                     <TextBlock Text="盲盘训练" FontSize="15" Foreground="White" FontWeight="SemiBold"
-           Cursor="Hand" MouseLeftButtonUp="OpenDoubleBlindTrain_Click"/>
+                                               Cursor="Hand" MouseLeftButtonUp="OpenDoubleBlindTrain_Click"/>
                                     <TextBlock Text="随机 A 股双盲训练" FontSize="12" Foreground="#E8F0FF"/>
                                 </StackPanel>
                                 <materialDesign:PackIcon Kind="Clock" Width="22" Height="22" Foreground="White" HorizontalAlignment="Right" VerticalAlignment="Center"/>
@@ -233,7 +557,8 @@
                         <Border Style="{StaticResource TrainBtn}" Background="#FFAA20">
                             <Grid>
                                 <StackPanel>
-                                    <TextBlock Text="涨停训练" FontSize="15" Foreground="White" FontWeight="SemiBold"/>
+                                    <TextBlock Text="涨停训练" FontSize="15" Foreground="White" FontWeight="SemiBold"
+                                               Cursor="Hand" MouseLeftButtonUp="OpenLimitUpTrain_Click"/>
                                     <TextBlock Text="随机涨停板训练" FontSize="12" Foreground="#FFF8E8"/>
                                 </StackPanel>
                                 <materialDesign:PackIcon Kind="ChartLine" Width="22" Height="22" Foreground="White" HorizontalAlignment="Right" VerticalAlignment="Center"/>
@@ -242,7 +567,8 @@
                         <Border Style="{StaticResource TrainBtn}" Background="#E84070">
                             <Grid>
                                 <StackPanel>
-                                    <TextBlock Text="指数训练" FontSize="15" Foreground="White" FontWeight="SemiBold"/>
+                                    <TextBlock Text="指数训练" FontSize="15" Foreground="White" FontWeight="SemiBold"
+                                               Cursor="Hand" MouseLeftButtonUp="OpenIndexTrain_Click"/>
                                     <TextBlock Text="随机指数双盲训练" FontSize="12" Foreground="#FFE8F0"/>
                                 </StackPanel>
                                 <materialDesign:PackIcon Kind="ChartBox" Width="22" Height="22" Foreground="White" HorizontalAlignment="Right" VerticalAlignment="Center"/>
@@ -251,7 +577,8 @@
                         <Border Style="{StaticResource TrainBtn}" Background="#20A0E8">
                             <Grid>
                                 <StackPanel>
-                                    <TextBlock Text="期货训练" FontSize="15" Foreground="White" FontWeight="SemiBold"/>
+                                    <TextBlock Text="期货训练" FontSize="15" Foreground="White" FontWeight="SemiBold"
+                                               Cursor="Hand" MouseLeftButtonUp="OpenFutureTrain_Click"/>
                                     <TextBlock Text="随机期货双盲训练" FontSize="12" Foreground="#E8F8FF"/>
                                 </StackPanel>
                                 <materialDesign:PackIcon Kind="HelpCircle" Width="22" Height="22" Foreground="White" HorizontalAlignment="Right" VerticalAlignment="Center"/>
@@ -260,7 +587,8 @@
                         <Border Style="{StaticResource TrainBtn}" Background="#FF8830">
                             <Grid>
                                 <StackPanel>
-                                    <TextBlock Text="港股训练" FontSize="15" Foreground="White" FontWeight="SemiBold"/>
+                                    <TextBlock Text="港股训练" FontSize="15" Foreground="White" FontWeight="SemiBold"
+                                               Cursor="Hand" MouseLeftButtonUp="OpenHKTrain_Click"/>
                                     <TextBlock Text="随机港股双盲训练" FontSize="12" Foreground="#FFF0E8"/>
                                 </StackPanel>
                                 <materialDesign:PackIcon Kind="Web" Width="22" Height="22" Foreground="White" HorizontalAlignment="Right" VerticalAlignment="Center"/>
@@ -269,7 +597,8 @@
                         <Border Style="{StaticResource TrainBtn}" Background="#28D0B0">
                             <Grid>
                                 <StackPanel>
-                                    <TextBlock Text="美股训练" FontSize="15" Foreground="White" FontWeight="SemiBold"/>
+                                    <TextBlock Text="美股训练" FontSize="15" Foreground="White" FontWeight="SemiBold"
+                                               Cursor="Hand" MouseLeftButtonUp="OpenUSTrain_Click"/>
                                     <TextBlock Text="随机美股双盲训练" FontSize="12" Foreground="#E8FFFB"/>
                                 </StackPanel>
                                 <materialDesign:PackIcon Kind="Web" Width="22" Height="22" Foreground="White" HorizontalAlignment="Right" VerticalAlignment="Center"/>
@@ -278,7 +607,8 @@
                         <Border Style="{StaticResource TrainBtn}" Background="#9040D0">
                             <Grid>
                                 <StackPanel>
-                                    <TextBlock Text="可转债训练" FontSize="15" Foreground="White" FontWeight="SemiBold"/>
+                                    <TextBlock Text="可转债训练" FontSize="15" Foreground="White" FontWeight="SemiBold"
+                                               Cursor="Hand" MouseLeftButtonUp="OpenBondTrain_Click"/>
                                     <TextBlock Text="随机可转债双盲训练" FontSize="12" Foreground="#F4E8FF"/>
                                 </StackPanel>
                                 <materialDesign:PackIcon Kind="FileDocument" Width="22" Height="22" Foreground="White" HorizontalAlignment="Right" VerticalAlignment="Center"/>
@@ -287,7 +617,8 @@
                         <Border Style="{StaticResource TrainBtn}" Background="#3050D0">
                             <Grid>
                                 <StackPanel>
-                                    <TextBlock Text="ETF 训练" FontSize="15" Foreground="White" FontWeight="SemiBold"/>
+                                    <TextBlock Text="ETF 训练" FontSize="15" Foreground="White" FontWeight="SemiBold"
+                                               Cursor="Hand" MouseLeftButtonUp="OpenETFTrain_Click"/>
                                     <TextBlock Text="随机 ETF 双盲训练" FontSize="12" Foreground="#E8EEFF"/>
                                 </StackPanel>
                                 <materialDesign:PackIcon Kind="Grid" Width="22" Height="22" Foreground="White" HorizontalAlignment="Right" VerticalAlignment="Center"/>
@@ -296,71 +627,115 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 训练数据独立布局容器，内部StackPanel承载表格 -->
-                <Border Grid.Column="1" Style="{StaticResource CardStyle}" Margin="8,194,8,0" Grid.ColumnSpan="3">
+                <!-- 训练数据面板 -->
+                <Border Grid.Column="1" Style="{StaticResource CardStyle}" Margin="8,240,8,0" Grid.ColumnSpan="3" Padding="0">
                     <StackPanel>
-                        <Grid>
-                            <TextBlock Text="训练数据" FontSize="16" FontWeight="SemiBold"/>
-                            <TextBlock x:Name="TxtTrainSummary" Text="训练结果：--" HorizontalAlignment="Right" Foreground="#777777"/>
+                        <Grid Margin="18,14,18,0">
+                            <TextBlock Text="训练数据" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource Fg.Primary}"/>
+                            <TextBlock x:Name="TxtTrainSummary" Text="训练结果：--" HorizontalAlignment="Right" Foreground="{DynamicResource Fg.Muted}"/>
                         </Grid>
-                        <Grid Margin="0,12" Height="461">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="24.44"/>
-                                <RowDefinition Height="11.56"/>
-                                <RowDefinition Height="36"/>
-                                <RowDefinition Height="36"/>
-                                <RowDefinition Height="36"/>
-                                <RowDefinition Height="36"/>
-                                <RowDefinition Height="36"/>
-                            </Grid.RowDefinitions>
-                            <Border Background="#3F51B5" CornerRadius="4" Width="278" Height="46" Grid.RowSpan="3" VerticalAlignment="Top" HorizontalAlignment="Left">
-                                <TextBlock x:Name="TxtStatGames" Text="训练场次：--" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White" FontSize="15"/>
-                            </Border>
-                            <Border Grid.Column="1" Background="#3F51B5" CornerRadius="4" Margin="2,0,2,0" Height="46" VerticalAlignment="Top" Grid.RowSpan="3">
-                                <TextBlock x:Name="TxtStatWinRate" Text="训练胜率：--" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White" FontSize="15" Margin="-10,0,0,0"/>
-                            </Border>
-                            <Border Grid.Row="3" Background="#3F51B5" CornerRadius="4" Margin="0,6,0,20" Grid.RowSpan="2" Height="46" HorizontalAlignment="Left" Width="278">
-                                <TextBlock x:Name="TxtStatBeatRate" Text="跑赢区间率：--" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White" FontSize="15" Margin="10,0,0,0"/>
-                            </Border>
-                            <Border Grid.Row="3" Grid.Column="1" Background="#3F51B5" CornerRadius="4" Margin="2,6,2,0" Grid.RowSpan="2" Height="46" VerticalAlignment="Top">
-                                <TextBlock x:Name="TxtStatPLRatio" Text="训练盈亏比：--" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White" FontSize="15"/>
-                            </Border>
-                            <Border Grid.Row="5" Background="#3F51B5" CornerRadius="4" Margin="0,0,4,18" Height="44" Grid.RowSpan="2" VerticalAlignment="Bottom">
-                                <TextBlock x:Name="TxtStatHoldTime" Text="持仓时间：--" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White" FontSize="15"/>
-                            </Border>
-                            <Border Grid.Row="5" Grid.Column="1" Background="#3F51B5" CornerRadius="4" Margin="4,10,0,0" Height="44" VerticalAlignment="Top" Grid.RowSpan="2">
-                                <TextBlock x:Name="TxtStatHoldRate" Text="持仓率：--" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White" FontSize="15" Margin="-24,0,0,0"/>
-                            </Border>
-                            <Border Grid.Row="6" Background="#3F51B5" CornerRadius="4" Margin="0,50,4,-57">
-                                <TextBlock x:Name="TxtStatHeavyRate" Text="重仓率：--" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White" FontSize="15" Margin="-10,0,0,0"/>
-                            </Border>
-                            <Border Grid.Row="6" Grid.Column="1" Background="#3F51B5" CornerRadius="4" Margin="2,50,2,-57">
-                                <TextBlock x:Name="TxtStatElapsed" Text="训练耗时：--" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White" FontSize="15" Margin="-8,0,0,0"/>
-                            </Border>
-                            <Border Grid.Row="6" Background="#3F51B5" CornerRadius="4" Margin="0,159,4,-155">
-                                <TextBlock x:Name="TxtStatOpens" Text="开仓次数：--" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
-                            </Border>
-                            <Border Grid.Row="6" Grid.Column="1" Background="#3F51B5" CornerRadius="4" Margin="2,159,2,-155">
-                                <TextBlock x:Name="TxtStatOpenWinRate" Text="开仓胜率：--" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
-                            </Border>
-                            <Border Grid.Row="6" Background="#3F51B5" CornerRadius="4" Margin="-6,239,10,-235">
-                                <TextBlock x:Name="TxtStatMaxProfit" Text="最大盈利：--" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
-                            </Border>
-                            <Border Grid.Row="6" Grid.Column="1" Background="#3F51B5" CornerRadius="4" Margin="0,239,4,-235">
-                                <TextBlock x:Name="TxtStatMaxDD" Text="最大回撤：--" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
-                            </Border>
-                        </Grid>
+                        <Border Margin="12,10,12,14" CornerRadius="10" Padding="0,0,1,1">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#4A3FA3"/>
+                                    <GradientStop Color="#3A2E8F" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Grid Margin="0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="38"/>
+                                    <RowDefinition Height="38"/>
+                                    <RowDefinition Height="38"/>
+                                    <RowDefinition Height="38"/>
+                                    <RowDefinition Height="38"/>
+                                    <RowDefinition Height="38"/>
+                                </Grid.RowDefinitions>
+
+                                <Border Grid.Row="0" Grid.Column="0" BorderBrush="#45FFFFFF" BorderThickness="0,0,1,1" Padding="14,0">
+                                    <Grid>
+                                        <TextBlock Text="训练场次:" Foreground="#CFC9F2" FontSize="13" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="TxtStatGames" Text="--" Foreground="White" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                                <Border Grid.Row="0" Grid.Column="1" BorderBrush="#45FFFFFF" BorderThickness="0,0,1,1" Padding="14,0">
+                                    <Grid>
+                                        <TextBlock Text="训练胜率:" Foreground="#CFC9F2" FontSize="13" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="TxtStatWinRate" Text="--" Foreground="White" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                                <Border Grid.Row="1" Grid.Column="0" BorderBrush="#45FFFFFF" BorderThickness="0,0,1,1" Padding="14,0">
+                                    <Grid>
+                                        <TextBlock Text="跑赢区间率:" Foreground="#CFC9F2" FontSize="13" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="TxtStatBeatRate" Text="--" Foreground="White" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                                <Border Grid.Row="1" Grid.Column="1" BorderBrush="#45FFFFFF" BorderThickness="0,0,1,1" Padding="14,0">
+                                    <Grid>
+                                        <TextBlock Text="训练盈亏比:" Foreground="#CFC9F2" FontSize="13" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="TxtStatPLRatio" Text="--" Foreground="White" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                                <Border Grid.Row="2" Grid.Column="0" BorderBrush="#45FFFFFF" BorderThickness="0,0,1,1" Padding="14,0">
+                                    <Grid>
+                                        <TextBlock Text="持仓时间:" Foreground="#CFC9F2" FontSize="13" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="TxtStatHoldTime" Text="--" Foreground="White" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                                <Border Grid.Row="2" Grid.Column="1" BorderBrush="#45FFFFFF" BorderThickness="0,0,1,1" Padding="14,0">
+                                    <Grid>
+                                        <TextBlock Text="持仓率:" Foreground="#CFC9F2" FontSize="13" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="TxtStatHoldRate" Text="--" Foreground="White" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                                <Border Grid.Row="3" Grid.Column="0" BorderBrush="#45FFFFFF" BorderThickness="0,0,1,1" Padding="14,0">
+                                    <Grid>
+                                        <TextBlock Text="重仓率:" Foreground="#CFC9F2" FontSize="13" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="TxtStatHeavyRate" Text="--" Foreground="White" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                                <Border Grid.Row="3" Grid.Column="1" BorderBrush="#45FFFFFF" BorderThickness="0,0,1,1" Padding="14,0">
+                                    <Grid>
+                                        <TextBlock Text="训练耗时:" Foreground="#CFC9F2" FontSize="13" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="TxtStatElapsed" Text="--" Foreground="White" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                                <Border Grid.Row="4" Grid.Column="0" BorderBrush="#45FFFFFF" BorderThickness="0,0,1,1" Padding="14,0">
+                                    <Grid>
+                                        <TextBlock Text="开仓次数:" Foreground="#CFC9F2" FontSize="13" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="TxtStatOpens" Text="--" Foreground="White" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                                <Border Grid.Row="4" Grid.Column="1" BorderBrush="#45FFFFFF" BorderThickness="0,0,1,1" Padding="14,0">
+                                    <Grid>
+                                        <TextBlock Text="开仓胜率:" Foreground="#CFC9F2" FontSize="13" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="TxtStatOpenWinRate" Text="--" Foreground="White" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                                <Border Grid.Row="5" Grid.Column="0" BorderBrush="#45FFFFFF" BorderThickness="0,0,1,1" Padding="14,0">
+                                    <Grid>
+                                        <TextBlock Text="最大盈利:" Foreground="#CFC9F2" FontSize="13" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="TxtStatMaxProfit" Text="--" Foreground="White" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                                <Border Grid.Row="5" Grid.Column="1" BorderBrush="#45FFFFFF" BorderThickness="0,0,1,1" Padding="14,0">
+                                    <Grid>
+                                        <TextBlock Text="最大回撤:" Foreground="#CFC9F2" FontSize="13" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="TxtStatMaxDD" Text="--" Foreground="#FF6B81" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </Border>
                     </StackPanel>
                 </Border>
             </Grid>
         </Grid>
 
-        <!-- 右侧排行榜 完全原样无修改 -->
-        <Border Grid.Column="2" Margin="4,0,0,0">
+        <!-- ==================== 右侧排行榜（保持原样） ==================== -->
+        <Border Grid.Row="1" Grid.Column="2" Margin="4,0,0,0">
             <StackPanel>
                 <Border CornerRadius="10" Padding="16">
                     <Border.Background>
@@ -381,10 +756,10 @@
                         <TextBlock Text="季榜" Foreground="White" HorizontalAlignment="Center"/>
                     </Border>
                     <Border Background="#EEEEF8" CornerRadius="6" Padding="10,6" Width="90" Margin="6,0">
-                        <TextBlock Text="月榜" Foreground="#666666" HorizontalAlignment="Center"/>
+                        <TextBlock Text="月榜" Foreground="{DynamicResource Fg.Secondary}" HorizontalAlignment="Center"/>
                     </Border>
                     <Border Background="#EEEEF8" CornerRadius="6" Padding="10,6" Width="90" Margin="6,0">
-                        <TextBlock Text="周榜" Foreground="#666666" HorizontalAlignment="Center"/>
+                        <TextBlock Text="周榜" Foreground="{DynamicResource Fg.Secondary}" HorizontalAlignment="Center"/>
                     </Border>
                 </StackPanel>
 
@@ -444,7 +819,7 @@
                                 <ColumnDefinition Width="60"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="4" FontSize="14" Foreground="#AAAAAA" VerticalAlignment="Center"/>
+                            <TextBlock Text="4" FontSize="14" Foreground="{DynamicResource Fg.Muted}" VerticalAlignment="Center"/>
                             <materialDesign:PackIcon Kind="AccountCircle" Grid.Column="1" Width="48" Height="48" Foreground="#DDDDDD"/>
                             <StackPanel Grid.Column="2" Margin="8,0">
                                 <TextBlock Text="无我" Foreground="#DDDDDD" FontSize="14"/>
@@ -464,7 +839,7 @@
                                 <ColumnDefinition Width="60"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="5" FontSize="14" Foreground="#AAAAAA" VerticalAlignment="Center"/>
+                            <TextBlock Text="5" FontSize="14" Foreground="{DynamicResource Fg.Muted}" VerticalAlignment="Center"/>
                             <materialDesign:PackIcon Kind="AccountCircle" Grid.Column="1" Width="48" Height="48" Foreground="#DDDDDD"/>
                             <StackPanel Grid.Column="2" Margin="8,0">
                                 <TextBlock Text="用户6696" Foreground="#DDDDDD" FontSize="14"/>
@@ -484,7 +859,7 @@
                                 <ColumnDefinition Width="60"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="6" FontSize="14" Foreground="#AAAAAA" VerticalAlignment="Center"/>
+                            <TextBlock Text="6" FontSize="14" Foreground="{DynamicResource Fg.Muted}" VerticalAlignment="Center"/>
                             <materialDesign:PackIcon Kind="AccountCircle" Grid.Column="1" Width="48" Height="48" Foreground="#DDDDDD"/>
                             <StackPanel Grid.Column="2" Margin="8,0">
                                 <TextBlock Text="竹杖芒鞋" Foreground="#DDDDDD" FontSize="14"/>
@@ -504,7 +879,7 @@
                                 <ColumnDefinition Width="60"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="7" FontSize="14" Foreground="#AAAAAA" VerticalAlignment="Center"/>
+                            <TextBlock Text="7" FontSize="14" Foreground="{DynamicResource Fg.Muted}" VerticalAlignment="Center"/>
                             <materialDesign:PackIcon Kind="AccountCircle" Grid.Column="1" Width="48" Height="48" Foreground="#DDDDDD"/>
                             <StackPanel Grid.Column="2" Margin="8,0">
                                 <TextBlock Text="高吸低抛王" Foreground="#DDDDDD" FontSize="14"/>

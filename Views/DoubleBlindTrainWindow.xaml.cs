@@ -7,9 +7,75 @@ namespace BaozhuKLineTrainer
 {
     public partial class DoubleBlindTrainWindow : Window
     {
+        // ★ 训练目标：Stock=个股盲盘 / Index=指数训练（首页按钮传入）
+        private readonly string _trainTarget = "Stock";
+
         public DoubleBlindTrainWindow()
         {
             InitializeComponent();
+        }
+
+        /// <summary>指数训练入口："Index" 时禁用个股专属配置</summary>
+        public DoubleBlindTrainWindow(string trainTarget) : this()
+        {
+            _trainTarget = trainTarget;
+            if (trainTarget == "Index")
+            {
+                Title = "指数训练";
+                // 指数无市场/时间段/ST 概念：禁用相关控件（保留布局不动）
+                RdoMarketAll.IsEnabled = RdoMarketMain.IsEnabled = RdoMarketCyb.IsEnabled = RdoMarketKcb.IsEnabled = false;
+                RdoPeriodAll.IsEnabled = RdoPeriod5Y.IsEnabled = RdoPeriod10Y.IsEnabled = RdoPeriodBefore10Y.IsEnabled = false;
+                TglRemoveST.IsEnabled = false;
+            }
+            if (trainTarget == "Future")
+            {
+                Title = "期货训练";
+                RdoMarketAll.IsEnabled = RdoMarketMain.IsEnabled = RdoMarketCyb.IsEnabled = RdoMarketKcb.IsEnabled = false;
+                RdoPeriodAll.IsEnabled = RdoPeriod5Y.IsEnabled = RdoPeriod10Y.IsEnabled = RdoPeriodBefore10Y.IsEnabled = false;
+                TglRemoveST.IsEnabled = false;
+            }
+            if (trainTarget == "HK")
+            {
+                Title = "港股训练";
+                RdoMarketAll.IsEnabled = RdoMarketMain.IsEnabled = RdoMarketCyb.IsEnabled = RdoMarketKcb.IsEnabled = false;
+                RdoPeriodAll.IsEnabled = RdoPeriod5Y.IsEnabled = RdoPeriod10Y.IsEnabled = RdoPeriodBefore10Y.IsEnabled = false;
+                TglRemoveST.IsEnabled = false;
+            }
+            if (trainTarget == "US")
+            {
+                Title = "美股训练";
+                RdoMarketAll.IsEnabled = RdoMarketMain.IsEnabled = RdoMarketCyb.IsEnabled = RdoMarketKcb.IsEnabled = false;
+                RdoPeriodAll.IsEnabled = RdoPeriod5Y.IsEnabled = RdoPeriod10Y.IsEnabled = RdoPeriodBefore10Y.IsEnabled = false;
+                TglRemoveST.IsEnabled = false;
+            }
+            if (trainTarget == "Bond")
+            {
+                Title = "可转债训练";
+                RdoMarketAll.IsEnabled = RdoMarketMain.IsEnabled = RdoMarketCyb.IsEnabled = RdoMarketKcb.IsEnabled = false;
+                RdoPeriodAll.IsEnabled = RdoPeriod5Y.IsEnabled = RdoPeriod10Y.IsEnabled = RdoPeriodBefore10Y.IsEnabled = false;
+                TglRemoveST.IsEnabled = false;
+            }
+            if (trainTarget == "LimitUp")
+            {
+                Title = "涨停训练";
+                // 涨停票池横跨主板/创业板/科创板且 SQL 已排除 ST：市场锁定"不限"、去除ST 强制开
+                RdoMarketAll.IsEnabled = RdoMarketMain.IsEnabled = RdoMarketCyb.IsEnabled = RdoMarketKcb.IsEnabled = false;
+                RdoMarketAll.IsChecked = true;
+                TglRemoveST.IsEnabled = false;
+                TglRemoveST.IsChecked = true;
+                // 训练时间段不锁：LoadLimitUpRandomStock 会按所选范围过滤涨停日
+            }
+            if (trainTarget == "ETF")
+            {
+                Title = "ETF训练";
+                RdoMarketAll.IsEnabled = RdoMarketMain.IsEnabled = RdoMarketCyb.IsEnabled = RdoMarketKcb.IsEnabled = false;
+                RdoPeriodAll.IsEnabled = RdoPeriod5Y.IsEnabled = RdoPeriod10Y.IsEnabled = RdoPeriodBefore10Y.IsEnabled = false;
+                TglRemoveST.IsEnabled = false;
+            }
+            // ★ 配置窗头部大标题随入口训练类型变化（原固定"双盲训练"）：各分支已设好 Title，直接复用。
+            //   XAML 里标题 TextBlock 需带 x:Name="TxtTitle"；没加也不报错（FindName 找不到就跳过）。
+            if (FindName("TxtTitle") is System.Windows.Controls.TextBlock titleTxt)
+                titleTxt.Text = Title ?? "双盲训练";
         }
 
         private void Close_Click(object sender, RoutedEventArgs e)
@@ -21,7 +87,7 @@ namespace BaozhuKLineTrainer
         {
             var config = new TrainingConfig();
 
-            // 当前只收集分仓配置，后续每加一个功能就在这里加一行
+            // 分仓
             config.IsSplitPosition = TglSplitPosition.IsChecked == true;
             config.SplitPositionPercent = (int)SliderSplitPosition.Value;
 
@@ -38,15 +104,39 @@ namespace BaozhuKLineTrainer
                 config.Leverage = 1;
             }
 
-            // ← 从这里开始插入
             // 止盈/止损
             config.IsStopProfit = TglStopProfit.IsChecked == true;
             config.StopProfitPercent = ParsePercent(TxtStopProfit.Text, 10);
             config.IsStopLoss = TglStopLoss.IsChecked == true;
             config.StopLossPercent = ParsePercent(TxtStopLoss.Text, 10);
 
-            return config;
+            // 自动卖出天数
+            config.AutoSellEnabled = TglAutoSell.IsChecked == true;
+            config.AutoSellDays = (int)SliderAutoSell.Value;
 
+            // 开盘买入 / 买卖自动跳 / 周月按日跳
+            config.OpenPriceTrading = TglOpenBuy.IsChecked == true;
+            config.AutoSkipAfterTrade = TglTradeAutoSkip.IsChecked == true;
+            config.WeekMonthDayJump = TglWeekMonthDayJump.IsChecked == true;
+
+            // 去除ST（默认开）
+            config.RemoveST = TglRemoveST.IsChecked == true;
+
+            // 市场类型
+            config.MarketType = RdoMarketMain.IsChecked == true ? "Main"
+                              : RdoMarketCyb.IsChecked == true ? "CYB"
+                              : RdoMarketKcb.IsChecked == true ? "KCB" : "All";
+
+            // 训练时间段
+            config.TrainPeriod = RdoPeriod5Y.IsChecked == true ? "5Y"
+                               : RdoPeriod10Y.IsChecked == true ? "10Y"
+                               : RdoPeriodBefore10Y.IsChecked == true ? "Before10Y" : "All";
+
+            // 训练目标（个股/指数）；涨停训练挂 IsLimitUpMode 开关，TrainTarget 保持 "Stock"（走个股 T+1 规则）
+            config.IsLimitUpMode = _trainTarget == "LimitUp";
+            config.TrainTarget = config.IsLimitUpMode ? "Stock" : _trainTarget;
+
+            return config;
         }
 
         // 文本框可能为空或非法，解析失败时用默认值
@@ -84,7 +174,7 @@ namespace BaozhuKLineTrainer
                 TxtStopProfit.Text = Math.Max(1, val - 1).ToString();
         }
 
-        // ========== 止损数值调节（新增） ==========
+        // ========== 止损数值调节 ==========
 
         private void TxtStopLoss_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
@@ -148,6 +238,5 @@ namespace BaozhuKLineTrainer
             if (TglSplitPosition.IsChecked == true)
                 TxtFirecrackerRatio.Text = ((int)SliderSplitPosition.Value).ToString();
         }
-
     }
 }

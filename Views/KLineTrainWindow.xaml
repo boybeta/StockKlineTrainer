@@ -4,12 +4,14 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:scottplot="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
+        xmlns:materialDesign="clr-namespace:MaterialDesignThemes.Wpf;assembly=MaterialDesignThemes.Wpf"
         mc:Ignorable="d"
         Width="1400"
         Height="900"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
-        Background="#F5F5F5">
+        WindowStyle="None"
+        Background="{DynamicResource Bg.Window}">
 
     <Window.Resources>
         <Style x:Key="PeriodBtn" TargetType="Button">
@@ -19,7 +21,7 @@
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#666"/>
+            <Setter Property="Foreground" Value="{DynamicResource Fg.Secondary}"/>
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
 
@@ -43,9 +45,9 @@
             <Setter Property="Margin" Value="3,0"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#E0E0E0"/>
-            <Setter Property="Background" Value="#F5F5F5"/>
-            <Setter Property="Foreground" Value="#666"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Border.Subtle}"/>
+            <Setter Property="Background" Value="{DynamicResource Bg.Control}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Fg.Secondary}"/>
         </Style>
 
         <Style x:Key="SpeedBtnActive" TargetType="Button" BasedOn="{StaticResource SpeedBtn}">
@@ -54,30 +56,30 @@
             <Setter Property="BorderBrush" Value="#E91E63"/>
         </Style>
 
-		<Style x:Key="PeriodDayBtn" TargetType="Button" BasedOn="{StaticResource PeriodBtn}">
-			<Style.Triggers>
-				<DataTrigger Binding="{Binding IsPeriodDay}" Value="True">
-					<Setter Property="Background" Value="#E91E63"/>
-					<Setter Property="Foreground" Value="White"/>
-				</DataTrigger>
-			</Style.Triggers>
-		</Style>
-		<Style x:Key="PeriodWeekBtn" TargetType="Button" BasedOn="{StaticResource PeriodBtn}">
-			<Style.Triggers>
-				<DataTrigger Binding="{Binding IsPeriodWeek}" Value="True">
-					<Setter Property="Background" Value="#E91E63"/>
-					<Setter Property="Foreground" Value="White"/>
-				</DataTrigger>
-			</Style.Triggers>
-		</Style>
-		<Style x:Key="PeriodMonthBtn" TargetType="Button" BasedOn="{StaticResource PeriodBtn}">
-			<Style.Triggers>
-				<DataTrigger Binding="{Binding IsPeriodMonth}" Value="True">
-					<Setter Property="Background" Value="#E91E63"/>
-					<Setter Property="Foreground" Value="White"/>
-				</DataTrigger>
-			</Style.Triggers>
-		</Style>
+        <Style x:Key="PeriodDayBtn" TargetType="Button" BasedOn="{StaticResource PeriodBtn}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsPeriodDay}" Value="True">
+                    <Setter Property="Background" Value="#E91E63"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="PeriodWeekBtn" TargetType="Button" BasedOn="{StaticResource PeriodBtn}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsPeriodWeek}" Value="True">
+                    <Setter Property="Background" Value="#E91E63"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="PeriodMonthBtn" TargetType="Button" BasedOn="{StaticResource PeriodBtn}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsPeriodMonth}" Value="True">
+                    <Setter Property="Background" Value="#E91E63"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
 
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
     </Window.Resources>
@@ -100,17 +102,39 @@
             </Grid.RowDefinitions>
 
             <!-- 1. 标题栏 -->
-            <Border Grid.Row="0" Background="White" CornerRadius="6" Margin="0,0,0,6">
+            <Border Grid.Row="0" Background="{DynamicResource Bg.Card}" CornerRadius="6" Margin="0,0,0,6" MouseLeftButtonDown="TitleBar_MouseDown">
                 <DockPanel VerticalAlignment="Center">
+                    <!-- 返回首页按钮 -->
+                    <Button DockPanel.Dock="Left" Width="40" Height="32" Margin="4,0,0,0"
+        Background="Transparent" BorderThickness="0" Cursor="Hand"
+        ToolTip="返回首页" Click="BtnBack_Click">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="{DynamicResource Bg.Control}"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                        <materialDesign:PackIcon Kind="ArrowLeft" Width="20" Height="20" Foreground="{DynamicResource Fg.Secondary}"/>
+                    </Button>
                     <Image Source="pack://application:,,,/Images/logo.png" Height="32" Margin="10,0"/>
                     <TextBlock Text="爆竹K线训练" FontSize="16" FontWeight="Bold"
-                               VerticalAlignment="Center" Margin="8,0"/>
+                               VerticalAlignment="Center" Margin="8,0" Foreground="{DynamicResource Fg.Primary}"/>
                 </DockPanel>
             </Border>
 
             <!-- 2. 股票信息栏 -->
-            <Border Grid.Row="1" Background="White" CornerRadius="6" Margin="0,0,0,6"
-                    BorderBrush="#DDD" BorderThickness="1">
+            <Border Grid.Row="1" Background="{DynamicResource Bg.Card}" CornerRadius="6" Margin="0,0,0,6"
+                    BorderBrush="{DynamicResource Border.Subtle}" BorderThickness="1">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="10"/>
@@ -137,92 +161,95 @@
                     <!-- 状态 -->
                     <StackPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="12,0,0,0">
                         <TextBlock Text="进行中" FontSize="12" Foreground="#E91E63" FontWeight="Bold"/>
-						<TextBlock Text="{Binding CurrentStockCode, FallbackValue=--}" FontSize="11" Foreground="#999" Margin="0,2,0,0"/>
+                        <TextBlock Text="{Binding CurrentStockCode, FallbackValue=--}" FontSize="11" Foreground="{DynamicResource Fg.Muted}" Margin="0,2,0,0"/>
                     </StackPanel>
 
-                    <Border Grid.Column="1" Background="#999" Width="1" Margin="0,0"/>
+                    <Border Grid.Column="1" Background="{DynamicResource Border.Strong}" Width="1" Margin="0,0"/>
 
                     <!-- 现价 -->
                     <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="40,0,0,0">
-                        <TextBlock Text="{Binding CurrentPrice, FallbackValue=--}" FontSize="14" FontWeight="Bold" Foreground="#333" HorizontalAlignment="Left"/>
-                        <TextBlock Text="现价" FontSize="11" Foreground="#999" HorizontalAlignment="Left" Margin="0,2,0,0"/>
+                        <TextBlock Text="{Binding CurrentPrice, FallbackValue=--}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource Fg.Primary}" HorizontalAlignment="Left"/>
+                        <TextBlock Text="现价" FontSize="11" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Left" Margin="0,2,0,0"/>
                     </StackPanel>
 
-                    <Border Grid.Column="3" Background="#999" Width="1" Margin="0,0"/>
+                    <Border Grid.Column="3" Background="{DynamicResource Border.Strong}" Width="1" Margin="0,0"/>
 
                     <!-- 涨跌 -->
                     <StackPanel Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="40,0,0,0">
                         <TextBlock Text="{Binding PriceChange, StringFormat={}{0:F2}, FallbackValue=--}" FontSize="14" FontWeight="Bold" Foreground="{Binding PriceChangeBrush}" HorizontalAlignment="Left"/>
-                        <TextBlock Text="涨跌" FontSize="11" Foreground="#999" HorizontalAlignment="Left" Margin="0,2,0,0"/>
+                        <TextBlock Text="涨跌" FontSize="11" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Left" Margin="0,2,0,0"/>
                     </StackPanel>
 
-                    <Border Grid.Column="5" Background="#999" Width="1" Margin="0,0"/>
+                    <Border Grid.Column="5" Background="{DynamicResource Border.Strong}" Width="1" Margin="0,0"/>
 
                     <!-- 涨跌幅 -->
                     <StackPanel Grid.Column="6" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="40,0,0,0">
                         <TextBlock Text="{Binding PriceChangePct, StringFormat={}{0:F2}%, FallbackValue=--}" FontSize="14" FontWeight="Bold" Foreground="{Binding PriceChangeBrush}" HorizontalAlignment="Left"/>
-                        <TextBlock Text="涨跌幅" FontSize="11" Foreground="#999" HorizontalAlignment="Left" Margin="0,2,0,0"/>
+                        <TextBlock Text="涨跌幅" FontSize="11" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Left" Margin="0,2,0,0"/>
                     </StackPanel>
 
-                    <Border Grid.Column="7" Background="#999" Width="1" Margin="0,0"/>
+                    <Border Grid.Column="7" Background="{DynamicResource Border.Strong}" Width="1" Margin="0,0"/>
 
                     <!-- 开盘 -->
                     <StackPanel Grid.Column="8" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="40,0,0,0">
-                        <TextBlock Text="{Binding OpenPrice, FallbackValue=--}" FontSize="14" FontWeight="Bold" Foreground="#333" HorizontalAlignment="Left"/>
-                        <TextBlock Text="开盘" FontSize="11" Foreground="#999" HorizontalAlignment="Left" Margin="0,2,0,0"/>
+                        <TextBlock Text="{Binding OpenPrice, FallbackValue=--}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource Fg.Primary}" HorizontalAlignment="Left"/>
+                        <TextBlock Text="开盘" FontSize="11" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Left" Margin="0,2,0,0"/>
                     </StackPanel>
 
-                    <Border Grid.Column="9" Background="#999" Width="1" Margin="0,0"/>
+                    <Border Grid.Column="9" Background="{DynamicResource Border.Strong}" Width="1" Margin="0,0"/>
 
                     <!-- 最高 -->
                     <StackPanel Grid.Column="10" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="40,0,0,0">
-                        <TextBlock Text="{Binding HighPrice, FallbackValue=--}" FontSize="14" FontWeight="Bold" Foreground="#333" HorizontalAlignment="Left"/>
-                        <TextBlock Text="最高" FontSize="11" Foreground="#999" HorizontalAlignment="Left" Margin="0,2,0,0"/>
+                        <TextBlock Text="{Binding HighPrice, FallbackValue=--}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource Fg.Primary}" HorizontalAlignment="Left"/>
+                        <TextBlock Text="最高" FontSize="11" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Left" Margin="0,2,0,0"/>
                     </StackPanel>
 
-                    <Border Grid.Column="11" Background="#999" Width="1" Margin="0,0"/>
+                    <Border Grid.Column="11" Background="{DynamicResource Border.Strong}" Width="1" Margin="0,0"/>
 
                     <!-- 最低 -->
                     <StackPanel Grid.Column="12" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="40,0,0,0">
-                        <TextBlock Text="{Binding LowPrice, FallbackValue=--}" FontSize="14" FontWeight="Bold" Foreground="#333" HorizontalAlignment="Left"/>
-                        <TextBlock Text="最低" FontSize="11" Foreground="#999" HorizontalAlignment="Left" Margin="0,2,0,0"/>
+                        <TextBlock Text="{Binding LowPrice, FallbackValue=--}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource Fg.Primary}" HorizontalAlignment="Left"/>
+                        <TextBlock Text="最低" FontSize="11" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Left" Margin="0,2,0,0"/>
                     </StackPanel>
 
-                    <Border Grid.Column="13" Background="#999" Width="1" Margin="0,0"/>
+                    <Border Grid.Column="13" Background="{DynamicResource Border.Strong}" Width="1" Margin="0,0"/>
 
                     <!-- 量比 -->
                     <StackPanel Grid.Column="14" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="40,0,0,0">
-                        <TextBlock Text="0.52" FontSize="14" FontWeight="Bold" Foreground="#333" HorizontalAlignment="Left"/>
-                        <TextBlock Text="量比" FontSize="11" Foreground="#999" HorizontalAlignment="Left" Margin="0,2,0,0"/>
+                        <TextBlock Text="0.52" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource Fg.Primary}" HorizontalAlignment="Left"/>
+                        <TextBlock Text="量比" FontSize="11" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Left" Margin="0,2,0,0"/>
                     </StackPanel>
 
-                    <Border Grid.Column="15" Background="#999" Width="1" Margin="0,0"/>
+                    <Border Grid.Column="15" Background="{DynamicResource Border.Strong}" Width="1" Margin="0,0"/>
 
                     <!-- 换手 -->
                     <StackPanel Grid.Column="16" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="40,0,0,0">
-                        <TextBlock Text="2.0" FontSize="14" FontWeight="Bold" Foreground="#333" HorizontalAlignment="Left"/>
-                        <TextBlock Text="换手" FontSize="11" Foreground="#999" HorizontalAlignment="Left" Margin="0,2,0,0"/>
+                        <TextBlock Text="2.0" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource Fg.Primary}" HorizontalAlignment="Left"/>
+                        <TextBlock Text="换手" FontSize="11" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Left" Margin="0,2,0,0"/>
                     </StackPanel>
 
-                    <Border Grid.Column="17" Background="#999" Width="1" Margin="0,0"/>
+                    <Border Grid.Column="17" Background="{DynamicResource Border.Strong}" Width="1" Margin="0,0"/>
 
                     <!-- 日期 -->
                     <StackPanel Grid.Column="18" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="10,0,0,0">
-                        <TextBlock Text="xxxx-xx" FontSize="13" FontWeight="Bold" Foreground="#333" HorizontalAlignment="Left"/>
-                        <TextBlock Text="日期" FontSize="11" Foreground="#999" HorizontalAlignment="Left" Margin="0,2,0,0"/>
+                        <TextBlock Text="xxxx-xx" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource Fg.Primary}" HorizontalAlignment="Left"/>
+                        <TextBlock Text="日期" FontSize="11" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Left" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Grid>
             </Border>
 
             <!-- 3. 周期切换 -->
-            <Border Grid.Row="2" Background="White" CornerRadius="6" Margin="0,0,0,6" Padding="0,0,0,0">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-					<Button Content="日" Style="{StaticResource PeriodDayBtn}"
-                            Command="{Binding SwitchPeriodCommand}" CommandParameter="Day"/>
-					<Button Content="周" Style="{StaticResource PeriodWeekBtn}"
-							Command="{Binding SwitchPeriodCommand}" CommandParameter="Week"/>
-					<Button Content="月" Style="{StaticResource PeriodMonthBtn}"
-                            Command="{Binding SwitchPeriodCommand}" CommandParameter="Month"/>
+            <Border Grid.Row="2" Background="{DynamicResource Bg.Card}" CornerRadius="6" Margin="0,0,0,6" Padding="0,0,0,0">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Cursor="">
+                    <Button Content="日" Style="{StaticResource PeriodDayBtn}"
+                            Command="{Binding SwitchPeriodCommand}" CommandParameter="Day"
+                            />
+                    <Button Content="周" Style="{StaticResource PeriodWeekBtn}"
+                            Command="{Binding SwitchPeriodCommand}" CommandParameter="Week"
+                            />
+                    <Button Content="月" Style="{StaticResource PeriodMonthBtn}"
+                            Command="{Binding SwitchPeriodCommand}" CommandParameter="Month"
+                            />
                     <Button Content="分时" Style="{StaticResource PeriodBtn}"/>
                     <Button Content="1分" Style="{StaticResource PeriodBtn}"/>
                     <Button Content="5分" Style="{StaticResource PeriodBtn}"/>
@@ -236,65 +263,79 @@
             </Border>
 
             <!-- 4. K线主图 -->
-            <Border Grid.Row="3" Background="White" CornerRadius="6" Margin="0,0,0,0"
-                    BorderBrush="#DDD" BorderThickness="1">
+            <Border Grid.Row="3" Background="{DynamicResource Bg.Card}" CornerRadius="6" Margin="0,0,0,0"
+                    BorderBrush="{DynamicResource Border.Subtle}" BorderThickness="1">
                 <Grid>
                     <!-- 左上角指标文字 -->
                     <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,26" Panel.ZIndex="1">
-                        <TextBlock FontSize="11">
-                            <Run Text="MA(5,10,20)  " Foreground="#999"/>
-                            <Run Text="MA5:" Foreground="#999"/>
+                        <TextBlock FontSize="11" Foreground="{DynamicResource Fg.Primary}">
+                            <Run Text="MA(5,10,20)  " Foreground="{DynamicResource Fg.Muted}"/>
+                            <Run Text="MA5:" Foreground="{DynamicResource Fg.Muted}"/>
                             <Run Text="{Binding MA5Value, FallbackValue=--}" Foreground="#FFD700" FontWeight="Bold"/>
-                            <Run Text=" " Foreground="#999"/>
-                            <Run Text="MA10:" Foreground="#999"/>
+                            <Run Text=" " Foreground="{DynamicResource Fg.Muted}"/>
+                            <Run Text="MA10:" Foreground="{DynamicResource Fg.Muted}"/>
                             <Run Text="{Binding MA10Value, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
-                            <Run Text=" " Foreground="#999"/>
-                            <Run Text="MA20:" Foreground="#999"/>
+                            <Run Text=" " Foreground="{DynamicResource Fg.Muted}"/>
+                            <Run Text="MA20:" Foreground="{DynamicResource Fg.Muted}"/>
                             <Run Text="{Binding MA20Value, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
                         </TextBlock>
-                        <TextBlock FontSize="11" Margin="0,3,0,0">
-                            <Run Text="EMA(5,10,20) " Foreground="#999"/>
-                            <Run Text="EMA5:" Foreground="#999"/>
+                        <TextBlock FontSize="11" Margin="0,3,0,0" Foreground="{DynamicResource Fg.Primary}">
+                            <Run Text="EMA(5,10,20) " Foreground="{DynamicResource Fg.Muted}"/>
+                            <Run Text="EMA5:" Foreground="{DynamicResource Fg.Muted}"/>
                             <Run Text="{Binding EMA5Value, FallbackValue=--}" Foreground="#FFD700" FontWeight="Bold"/>
-                            <Run Text=" " Foreground="#999"/>
-                            <Run Text="EMA10:" Foreground="#999"/>
+                            <Run Text=" " Foreground="{DynamicResource Fg.Muted}"/>
+                            <Run Text="EMA10:" Foreground="{DynamicResource Fg.Muted}"/>
                             <Run Text="{Binding EMA10Value, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
-                            <Run Text=" " Foreground="#999"/>
-                            <Run Text="EMA20:" Foreground="#999"/>
+                            <Run Text=" " Foreground="{DynamicResource Fg.Muted}"/>
+                            <Run Text="EMA20:" Foreground="{DynamicResource Fg.Muted}"/>
                             <Run Text="{Binding EMA20Value, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
                         </TextBlock>
-                        <TextBlock FontSize="11" Margin="0,3,0,0">
-                            <Run Text="BOLL(20,2)   " Foreground="#999"/>
-                            <Run Text="UP:" Foreground="#999"/>
+                        <TextBlock FontSize="11" Margin="0,3,0,0" Foreground="{DynamicResource Fg.Primary}">
+                            <Run Text="BOLL(20,2)   " Foreground="{DynamicResource Fg.Muted}"/>
+                            <Run Text="UP:" Foreground="{DynamicResource Fg.Muted}"/>
                             <Run Text="{Binding BollUpValue, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
-                            <Run Text=" " Foreground="#999"/>
-                            <Run Text="MID:" Foreground="#999"/>
+                            <Run Text=" " Foreground="{DynamicResource Fg.Muted}"/>
+                            <Run Text="MID:" Foreground="{DynamicResource Fg.Muted}"/>
                             <Run Text="{Binding BollMidValue, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
-                            <Run Text=" " Foreground="#999"/>
-                            <Run Text="DN:" Foreground="#999"/>
+                            <Run Text=" " Foreground="{DynamicResource Fg.Muted}"/>
+                            <Run Text="DN:" Foreground="{DynamicResource Fg.Muted}"/>
                             <Run Text="{Binding BollDnValue, FallbackValue=--}" Foreground="#00A800" FontWeight="Bold"/>
+                        </TextBlock>
+                        <TextBlock FontSize="11" Margin="0,3,0,0" Foreground="{DynamicResource Fg.Primary}">
+                            <Run Text="PATTERN    " Foreground="{DynamicResource Fg.Muted}"/>
+                            <Run Text="形态:" Foreground="{DynamicResource Fg.Muted}"/>
+                            <Run Text="{Binding PatternText, FallbackValue=--}" Foreground="{DynamicResource Accent.Purple}" FontWeight="Bold"/>
                         </TextBlock>
                     </StackPanel>
 
-                    <scottplot:WpfPlot x:Name="KlinePlot" Margin="10,0,10,0"/>
+                    <Grid>
+                        <scottplot:WpfPlot x:Name="KlinePlot" Margin="10,0,10,0"/>
+                        <!-- 十字光标价格标签：覆盖层，定位在右侧价格刻度区，不遮挡K线 -->
+                        <Border x:Name="CursorPriceLabel" VerticalAlignment="Top" HorizontalAlignment="Left"
+            Background="#2196F3" CornerRadius="2" Padding="4,1"
+            Visibility="Hidden" IsHitTestVisible="False">
+                            <TextBlock x:Name="CursorPriceText" FontSize="11" FontWeight="Bold" Foreground="White"/>
+                        </Border>
+                    </Grid>
+
                 </Grid>
             </Border>
 
             <!-- 5. VOL副图 -->
-            <Border Grid.Row="4" Background="White" CornerRadius="6" Margin="0,0,0,0"
-                    BorderBrush="#DDD" BorderThickness="1">
+            <Border Grid.Row="4" Background="{DynamicResource Bg.Card}" CornerRadius="6" Margin="0,0,0,0"
+                    BorderBrush="{DynamicResource Border.Subtle}" BorderThickness="1">
                 <Grid>
                     <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,4" Panel.ZIndex="1">
-                        <TextBlock FontSize="11">
-                            <Run Text="VOL(5,10) " Foreground="#999"/>
-                            <Run Text="MA5:" Foreground="#999"/>
+                        <TextBlock FontSize="11" Foreground="{DynamicResource Fg.Primary}">
+                            <Run Text="VOL(5,10) " Foreground="{DynamicResource Fg.Muted}"/>
+                            <Run Text="MA5:" Foreground="{DynamicResource Fg.Muted}"/>
                             <Run Text="{Binding VolMA5Value, FallbackValue=--}" Foreground="#FFD700" FontWeight="Bold"/>
-                            <Run Text=" " Foreground="#999"/>
-                            <Run Text="MA10:" Foreground="#999"/>
+                            <Run Text=" " Foreground="{DynamicResource Fg.Muted}"/>
+                            <Run Text="MA10:" Foreground="{DynamicResource Fg.Muted}"/>
                             <Run Text="{Binding VolMA10Value, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
-                            <Run Text=" " Foreground="#999"/>
-                            <Run Text="VOLUME:" Foreground="#999"/>
-                            <Run Text="{Binding VolumeValue, FallbackValue=--}" Foreground="#333" FontWeight="Bold"/>
+                            <Run Text=" " Foreground="{DynamicResource Fg.Muted}"/>
+                            <Run Text="VOLUME:" Foreground="{DynamicResource Fg.Muted}"/>
+                            <Run Text="{Binding VolumeValue, FallbackValue=--}" Foreground="{DynamicResource Fg.Primary}" FontWeight="Bold"/>
                         </TextBlock>
                     </StackPanel>
                     <scottplot:WpfPlot x:Name="VolPlot" Margin="10,0,10,0"/>
@@ -302,19 +343,19 @@
             </Border>
 
             <!-- 6. MACD副图 -->
-            <Border Grid.Row="5" Background="White" CornerRadius="6"
-                    BorderBrush="#DDD" BorderThickness="1">
+            <Border Grid.Row="5" Background="{DynamicResource Bg.Card}" CornerRadius="6"
+                    BorderBrush="{DynamicResource Border.Subtle}" BorderThickness="1">
                 <Grid>
                     <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,4" Panel.ZIndex="1">
-                        <TextBlock FontSize="11">
-                            <Run Text="MACD(12,26,9) " Foreground="#999"/>
-                            <Run Text="DIF:" Foreground="#999"/>
+                        <TextBlock FontSize="11" Foreground="{DynamicResource Fg.Primary}">
+                            <Run Text="MACD(12,26,9) " Foreground="{DynamicResource Fg.Muted}"/>
+                            <Run Text="DIF:" Foreground="{DynamicResource Fg.Muted}"/>
                             <Run Text="{Binding DIFValue, FallbackValue=--}" Foreground="#FFD700" FontWeight="Bold"/>
-                            <Run Text=" " Foreground="#999"/>
-                            <Run Text="DEA:" Foreground="#999"/>
+                            <Run Text=" " Foreground="{DynamicResource Fg.Muted}"/>
+                            <Run Text="DEA:" Foreground="{DynamicResource Fg.Muted}"/>
                             <Run Text="{Binding DEAValue, FallbackValue=--}" Foreground="#00BFFF" FontWeight="Bold"/>
-                            <Run Text=" " Foreground="#999"/>
-                            <Run Text="MACD:" Foreground="#999"/>
+                            <Run Text=" " Foreground="{DynamicResource Fg.Muted}"/>
+                            <Run Text="MACD:" Foreground="{DynamicResource Fg.Muted}"/>
                             <Run Text="{Binding MACDValue, FallbackValue=--}" Foreground="#FF69B4" FontWeight="Bold"/>
                         </TextBlock>
                     </StackPanel>
@@ -324,7 +365,7 @@
         </Grid>
 
         <!-- ==================== 右侧信息面板 ==================== -->
-        <Border Grid.Column="1" Background="White" Margin="5,10,10,10" CornerRadius="6" Padding="16">
+        <Border Grid.Column="1" Background="{DynamicResource Bg.Card}" Margin="5,10,10,10" CornerRadius="6" Padding="16">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"/>
@@ -332,11 +373,11 @@
                 </Grid.RowDefinitions>
 
                 <!-- 内容区域 -->
-                <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Hidden" Margin="0,-60,0,0">
+                <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Hidden" Margin="0,-45,0,0">
                     <StackPanel>
 
                         <!-- 训练信息 -->
-                        <TextBlock Text="训练信息" FontSize="16" FontWeight="Bold" Margin="0,0,0,10"/>
+                        <TextBlock Text="训练信息" FontSize="16" FontWeight="Bold" Margin="0,0,0,10" Foreground="{DynamicResource Fg.Primary}"/>
 
                         <Grid Margin="0,0,0,12">
                             <Grid.ColumnDefinitions>
@@ -352,83 +393,85 @@
                                 <RowDefinition Height="28"/>
                                 <RowDefinition Height="28"/>
                                 <RowDefinition Height="28"/>
-								<RowDefinition Height="28"/><!-- 杠杆 -->
-								<RowDefinition Height="28"/><!-- 借款金额 -->
+                                <RowDefinition Height="28"/>
+                                <!-- 杠杆 -->
+                                <RowDefinition Height="28"/>
+                                <!-- 借款金额 -->
                             </Grid.RowDefinitions>
 
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="总爆竹" VerticalAlignment="Center" Foreground="#666" FontSize="12"/>
-                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding TotalFirecrackers, StringFormat=F2, FallbackValue=10000.00}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="总爆竹" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}" FontSize="12"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding TotalFirecrackers, StringFormat=F2, FallbackValue=10000.00}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}"/>
 
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="使用爆竹数量" VerticalAlignment="Center" Foreground="#666" FontSize="12"/>
-                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding UsedFirecrackers, StringFormat=F2, FallbackValue=0.00}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="使用爆竹数量" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}" FontSize="12"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding UsedFirecrackers, StringFormat=F2, FallbackValue=0.00}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}"/>
 
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="未使用爆竹数量" VerticalAlignment="Center" Foreground="#666" FontSize="12"/>
-                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding UnusedFirecrackers, StringFormat=F2, FallbackValue=10000.00}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="未使用爆竹数量" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}" FontSize="12"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding UnusedFirecrackers, StringFormat=F2, FallbackValue=10000.00}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}"/>
 
-                            <TextBlock Grid.Row="3" Grid.Column="0" Text="本局收益" VerticalAlignment="Center" Foreground="#666" FontSize="12"/>
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="本局收益" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}" FontSize="12"/>
                             <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding TotalProfitAmount, StringFormat={}{0:F2}, FallbackValue=0.00}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="{Binding TotalProfitBrush}"/>
 
-                            <TextBlock Grid.Row="4" Grid.Column="0" Text="开仓收益" VerticalAlignment="Center" Foreground="#666" FontSize="12"/>
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="开仓收益" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}" FontSize="12"/>
                             <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding OpenProfitAmount, StringFormat={}{0:F2}, FallbackValue=0.00}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="{Binding OpenProfitBrush}"/>
 
-                            <TextBlock Grid.Row="5" Grid.Column="0" Text="成本价" VerticalAlignment="Center" Foreground="#666" FontSize="12"/>
-                            <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding AvgCostPriceText, FallbackValue=--}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="#999"/>
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="成本价" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}" FontSize="12"/>
+                            <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding AvgCostPriceText, FallbackValue=--}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Muted}"/>
 
-                            <TextBlock Grid.Row="6" Grid.Column="0" Text="持仓" VerticalAlignment="Center" Foreground="#666" FontSize="12"/>
-                            <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding PositionText, FallbackValue=0/1}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Row="6" Grid.Column="0" Text="持仓" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}" FontSize="12"/>
+                            <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding PositionText, FallbackValue=0/1}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}"/>
 
-                            <TextBlock Grid.Row="7" Grid.Column="0" Text="T+1冻结" VerticalAlignment="Center" Foreground="#666" FontSize="12"/>
-							<TextBlock Grid.Row="8" Grid.Column="0" Text="杠杆" VerticalAlignment="Center" Foreground="#666" FontSize="12"/>
-							<TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding LeverageText, FallbackValue=1}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Row="7" Grid.Column="0" Text="{Binding FrozenLabel}" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Secondary}" FontSize="12"/>
+                            <TextBlock Grid.Row="8" Grid.Column="0" Text="杠杆" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}" FontSize="12"/>
+                            <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding LeverageText, FallbackValue=1}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}"/>
 
-							<TextBlock Grid.Row="9" Grid.Column="0" Text="借款金额" VerticalAlignment="Center" Foreground="#666" FontSize="12"/>
-							<TextBlock Grid.Row="9" Grid.Column="1" Text="{Binding BorrowText, FallbackValue=0.00}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="{Binding BorrowBrush}"/>
-                            <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding FrozenText, FallbackValue=0}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Row="9" Grid.Column="0" Text="借款金额" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}" FontSize="12"/>
+                            <TextBlock Grid.Row="9" Grid.Column="1" Text="{Binding BorrowText, FallbackValue=0.00}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="{Binding BorrowBrush}"/>
+                            <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding FrozenText, FallbackValue=0}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}"/>
                         </Grid>
 
                         <Separator Margin="0,0,0,10"/>
 
                         <!-- 训练数据 -->
                         <DockPanel Margin="0,0,0,8">
-                            <TextBlock Text="训练数据" FontSize="13" FontWeight="Bold"/>
-                            <TextBlock Text="{Binding RemainingBars, StringFormat=剩余 {0} 根, FallbackValue=剩余 150 根}" FontSize="11" Foreground="#999" HorizontalAlignment="Right"/>
+                            <TextBlock Text="训练数据" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource Fg.Primary}"/>
+                            <TextBlock Text="{Binding RemainingBars, StringFormat=剩余 {0} 根, FallbackValue=剩余 150 根}" FontSize="11" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Right"/>
                         </DockPanel>
 
                         <UniformGrid Columns="3" Margin="0,0,0,12">
-                            <Border Background="#F5F5F5" CornerRadius="4" Padding="6,5" Margin="2">
+                            <Border Background="{DynamicResource Bg.Control}" CornerRadius="4" Padding="6,5" Margin="2">
                                 <StackPanel>
-                                    <TextBlock Text="{Binding OpenCount, FallbackValue=0}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="开仓次数" FontSize="12" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                    <TextBlock Text="{Binding OpenCount, FallbackValue=0}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource Fg.Primary}"/>
+                                    <TextBlock Text="开仓次数" FontSize="12" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
-                            <Border Background="#F5F5F5" CornerRadius="4" Padding="6,5" Margin="2">
+                            <Border Background="{DynamicResource Bg.Control}" CornerRadius="4" Padding="6,5" Margin="2">
                                 <StackPanel>
-                                    <TextBlock Text="{Binding ProfitCount, FallbackValue=0}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="盈利次数" FontSize="12" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                    <TextBlock Text="{Binding ProfitCount, FallbackValue=0}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource Fg.Primary}"/>
+                                    <TextBlock Text="盈利次数" FontSize="12" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
-                            <Border Background="#F5F5F5" CornerRadius="4" Padding="6,5" Margin="2">
+                            <Border Background="{DynamicResource Bg.Control}" CornerRadius="4" Padding="6,5" Margin="2">
                                 <StackPanel>
-                                    <TextBlock Text="{Binding WatchDays, FallbackValue=0}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="观望天数" FontSize="12" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                    <TextBlock Text="{Binding WatchDays, FallbackValue=0}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource Fg.Primary}"/>
+                                    <TextBlock Text="观望天数" FontSize="12" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
-                            <Border Background="#F5F5F5" CornerRadius="4" Padding="6,5" Margin="2">
+                            <Border Background="{DynamicResource Bg.Control}" CornerRadius="4" Padding="6,5" Margin="2">
                                 <StackPanel>
-                                    <TextBlock Text="{Binding HoldDays, FallbackValue=0}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="持仓天数" FontSize="12" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                    <TextBlock Text="{Binding HoldDays, FallbackValue=0}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource Fg.Primary}"/>
+                                    <TextBlock Text="持仓天数" FontSize="12" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
-                            <Border Background="#F5F5F5" CornerRadius="4" Padding="6,5" Margin="2">
+                            <Border Background="{DynamicResource Bg.Control}" CornerRadius="4" Padding="6,5" Margin="2">
                                 <StackPanel>
-                                    <TextBlock Text="{Binding HeavyHoldDays, FallbackValue=0}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="重仓天数" FontSize="12" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                    <TextBlock Text="{Binding HeavyHoldDays, FallbackValue=0}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource Fg.Primary}"/>
+                                    <TextBlock Text="重仓天数" FontSize="12" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
-                            <Border Background="#F5F5F5" CornerRadius="4" Padding="6,5" Margin="2">
+                            <Border Background="{DynamicResource Bg.Control}" CornerRadius="4" Padding="6,5" Margin="2">
                                 <StackPanel>
-                                    <TextBlock Text="{Binding ElapsedText, FallbackValue=0s}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="用时" FontSize="12" Foreground="#999" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                    <TextBlock Text="{Binding ElapsedText, FallbackValue=0s}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource Fg.Primary}"/>
+                                    <TextBlock Text="用时" FontSize="12" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
                         </UniformGrid>
@@ -436,7 +479,7 @@
                         <Separator Margin="0,0,0,10"/>
 
                         <!-- 操作 -->
-                        <TextBlock Text="操作" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <TextBlock Text="操作" FontSize="13" FontWeight="Bold" Margin="0,0,0,8" Foreground="{DynamicResource Fg.Primary}"/>
 
                         <!-- 分仓模式：档位按钮列表 -->
                         <!-- 分仓模式：档位按钮列表 -->
@@ -458,7 +501,7 @@
                                                             <Border Background="{TemplateBinding Background}" CornerRadius="3">
                                                                 <Grid Margin="10,0">
                                                                     <TextBlock Text="{Binding Text}" FontSize="12" 
-                                                                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                                               VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{DynamicResource Fg.Primary}"/>
                                                                     <TextBlock Text="{Binding Index}" FontSize="10" 
                                                                                Foreground="White" Opacity="0.6"
                                                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
@@ -479,49 +522,49 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
 
-						<!-- 分仓模式：卖出档位按钮列表 -->
-						<ItemsControl ItemsSource="{Binding SplitSellItems}" Margin="0,0,0,4"
+                        <!-- 分仓模式：卖出档位按钮列表 -->
+                        <ItemsControl ItemsSource="{Binding SplitSellItems}" Margin="0,0,0,4"
                                       Visibility="{Binding IsSellOptionsVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
-							<ItemsControl.ItemTemplate>
-								<DataTemplate>
-									<Button Height="24" Margin="0,1" BorderThickness="0" FontWeight="Bold"
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Height="24" Margin="0,1" BorderThickness="0" FontWeight="Bold"
                                             HorizontalContentAlignment="Stretch"
                                             Command="{Binding DataContext.SplitSellCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                             CommandParameter="{Binding Percent}">
-										<Button.Style>
-											<Style TargetType="Button">
-												<Setter Property="Background" Value="#3E9B6E"/>
-												<Setter Property="Foreground" Value="White"/>
-												<Setter Property="Template">
-													<Setter.Value>
-														<ControlTemplate TargetType="Button">
-															<Border Background="{TemplateBinding Background}" CornerRadius="3">
-																<Grid Margin="10,0">
-																	<TextBlock Text="{Binding Text}" FontSize="12"
-                                                                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
-																	<TextBlock Text="{Binding Index}" FontSize="10"
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Background" Value="#3E9B6E"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border Background="{TemplateBinding Background}" CornerRadius="3">
+                                                                <Grid Margin="10,0">
+                                                                    <TextBlock Text="{Binding Text}" FontSize="12"
+                                                                               VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{DynamicResource Fg.Primary}"/>
+                                                                    <TextBlock Text="{Binding Index}" FontSize="10"
                                                                                Foreground="White" Opacity="0.6"
                                                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
-																</Grid>
-															</Border>
-														</ControlTemplate>
-													</Setter.Value>
-												</Setter>
-												<Style.Triggers>
-													<Trigger Property="IsEnabled" Value="False">
-														<Setter Property="Opacity" Value="0.35"/>
-													</Trigger>
-												</Style.Triggers>
-											</Style>
-										</Button.Style>
-									</Button>
-								</DataTemplate>
-							</ItemsControl.ItemTemplate>
-						</ItemsControl>
+                                                                </Grid>
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsEnabled" Value="False">
+                                                        <Setter Property="Opacity" Value="0.35"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
 
                         <!-- 分仓模式：B买入 + S卖出 -->
-						<!-- B买入 + S卖出（两种模式共用：分仓=展开档位面板，普通=直接全仓交易） -->
-						<Grid Margin="0,0,0,6"> 
+                        <!-- B买入 + S卖出（两种模式共用：分仓=展开档位面板，普通=直接全仓交易） -->
+                        <Grid Margin="0,0,0,6">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
@@ -550,10 +593,10 @@
                                     </Style>
                                 </Button.Style>
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="B" FontSize="25" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                                    <TextBlock Text="B" FontSize="25" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,15,0" Foreground="{DynamicResource Fg.Primary}"/>
                                     <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="买入" FontSize="16"/>
-                                        <TextBlock Text="{Binding BuyBtnSubText, FallbackValue=可买10/10仓}" FontSize="10" Opacity="0.85" Margin="0,1,0,0"/>
+                                        <TextBlock Text="买入" FontSize="16" Foreground="{DynamicResource Fg.Primary}"/>
+                                        <TextBlock Text="{Binding BuyBtnSubText, FallbackValue=可买10/10仓}" FontSize="10" Opacity="0.85" Margin="0,1,0,0" Foreground="{DynamicResource Fg.Primary}"/>
                                     </StackPanel>
                                 </StackPanel>
                             </Button>
@@ -581,10 +624,10 @@
                                     </Style>
                                 </Button.Style>
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="S" FontSize="25" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                                    <TextBlock Text="S" FontSize="25" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,15,0" Foreground="{DynamicResource Fg.Primary}"/>
                                     <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="卖出" FontSize="16"/>
-                                        <TextBlock Text="{Binding SellBtnSubText, FallbackValue=无仓位可卖}" FontSize="10" Opacity="0.85" Margin="0,1,0,0"/>
+                                        <TextBlock Text="卖出" FontSize="16" Foreground="{DynamicResource Fg.Primary}"/>
+                                        <TextBlock Text="{Binding SellBtnSubText, FallbackValue=无仓位可卖}" FontSize="10" Opacity="0.85" Margin="0,1,0,0" Foreground="{DynamicResource Fg.Primary}"/>
                                     </StackPanel>
                                 </StackPanel>
                             </Button>
@@ -625,124 +668,124 @@
                                 </Style>
                             </Button.Style>
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="持有 / 观望" FontSize="14"/>
-                                <TextBlock Text="H / Space" FontSize="10" Opacity="0.7" Margin="10,0,0,0"/>
+                                <TextBlock Text="持有 / 观望" FontSize="14" Foreground="{DynamicResource Fg.Primary}"/>
+                                <TextBlock Text="H / Space" FontSize="10" Opacity="0.7" Margin="10,0,0,0" Foreground="{DynamicResource Fg.Primary}"/>
                             </StackPanel>
                         </Button>
 
                         <!-- 自动播放（两种模式共用） -->
-						<!-- 自动播放（两种模式共用） -->
-						<Grid Margin="0,0,0,12">
-							<Grid.ColumnDefinitions>
-								<ColumnDefinition Width="Auto"/>
-								<ColumnDefinition Width="*"/>
-							</Grid.ColumnDefinitions>
-							<Button Grid.Column="0" Content="{Binding PlayBtnText}" Width="85" Height="36"
+                        <!-- 自动播放（两种模式共用） -->
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="{Binding PlayBtnText}" Width="85" Height="36"
                                     FontSize="12" FontWeight="Bold"
                                     Command="{Binding TogglePlayCommand}">
-								<Button.Style>
-									<Style TargetType="Button">
-										<Setter Property="Background" Value="#4A90D9"/>
-										<Setter Property="Foreground" Value="White"/>
-										<Setter Property="BorderThickness" Value="0"/>
-										<Setter Property="Cursor" Value="Hand"/>
-										<Style.Triggers>
-											<!-- 播放中按钮变橙色，提示"再点=暂停" -->
-											<DataTrigger Binding="{Binding IsPlaying}" Value="True">
-												<Setter Property="Background" Value="#E6A23C"/>
-											</DataTrigger>
-											<Trigger Property="IsEnabled" Value="False">
-												<Setter Property="Opacity" Value="0.4"/>
-											</Trigger>
-										</Style.Triggers>
-									</Style>
-								</Button.Style>
-							</Button>
-							<StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-								<Button Content="0.5x" Width="40" Height="28" Margin="2,0" FontSize="11"
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Background" Value="#4A90D9"/>
+                                        <Setter Property="Foreground" Value="White"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                        <Setter Property="Cursor" Value="Hand"/>
+                                        <Style.Triggers>
+                                            <!-- 播放中按钮变橙色，提示"再点=暂停" -->
+                                            <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                                <Setter Property="Background" Value="#E6A23C"/>
+                                            </DataTrigger>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter Property="Opacity" Value="0.4"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <Button Content="0.5x" Width="40" Height="28" Margin="2,0" FontSize="11"
                                         Command="{Binding PlaySpeedCommand}" CommandParameter="0.5">
-									<Button.Style>
-										<Style TargetType="Button">
-											<Setter Property="Background" Value="#F5F5F5"/>
-											<Setter Property="Foreground" Value="#333"/>
-											<Setter Property="BorderBrush" Value="#DDD"/>
-											<Setter Property="BorderThickness" Value="1"/>
-											<Style.Triggers>
-												<DataTrigger Binding="{Binding IsSpeed05x}" Value="True">
-													<Setter Property="Background" Value="#E91E63"/>
-													<Setter Property="Foreground" Value="White"/>
-													<Setter Property="BorderBrush" Value="#E91E63"/>
-												</DataTrigger>
-											</Style.Triggers>
-										</Style>
-									</Button.Style>
-								</Button>
-								<Button Content="1x" Width="40" Height="28" Margin="2,0" FontSize="11"
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Background" Value="{DynamicResource Bg.Control}"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource Fg.Primary}"/>
+                                            <Setter Property="BorderBrush" Value="{DynamicResource Border.Subtle}"/>
+                                            <Setter Property="BorderThickness" Value="1"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSpeed05x}" Value="True">
+                                                    <Setter Property="Background" Value="#E91E63"/>
+                                                    <Setter Property="Foreground" Value="White"/>
+                                                    <Setter Property="BorderBrush" Value="#E91E63"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button Content="1x" Width="40" Height="28" Margin="2,0" FontSize="11"
                                         Command="{Binding PlaySpeedCommand}" CommandParameter="1">
-									<Button.Style>
-										<Style TargetType="Button">
-											<Setter Property="Background" Value="#F5F5F5"/>
-											<Setter Property="Foreground" Value="#333"/>
-											<Setter Property="BorderBrush" Value="#DDD"/>
-											<Setter Property="BorderThickness" Value="1"/>
-											<Style.Triggers>
-												<DataTrigger Binding="{Binding IsSpeed1x}" Value="True">
-													<Setter Property="Background" Value="#E91E63"/>
-													<Setter Property="Foreground" Value="White"/>
-													<Setter Property="BorderBrush" Value="#E91E63"/>
-												</DataTrigger>
-											</Style.Triggers>
-										</Style>
-									</Button.Style>
-								</Button>
-								<Button Content="2x" Width="40" Height="28" Margin="2,0" FontSize="11"
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Background" Value="{DynamicResource Bg.Control}"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource Fg.Primary}"/>
+                                            <Setter Property="BorderBrush" Value="{DynamicResource Border.Subtle}"/>
+                                            <Setter Property="BorderThickness" Value="1"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSpeed1x}" Value="True">
+                                                    <Setter Property="Background" Value="#E91E63"/>
+                                                    <Setter Property="Foreground" Value="White"/>
+                                                    <Setter Property="BorderBrush" Value="#E91E63"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button Content="2x" Width="40" Height="28" Margin="2,0" FontSize="11"
                                         Command="{Binding PlaySpeedCommand}" CommandParameter="2">
-									<Button.Style>
-										<Style TargetType="Button">
-											<Setter Property="Background" Value="#F5F5F5"/>
-											<Setter Property="Foreground" Value="#333"/>
-											<Setter Property="BorderBrush" Value="#DDD"/>
-											<Setter Property="BorderThickness" Value="1"/>
-											<Style.Triggers>
-												<DataTrigger Binding="{Binding IsSpeed2x}" Value="True">
-													<Setter Property="Background" Value="#E91E63"/>
-													<Setter Property="Foreground" Value="White"/>
-													<Setter Property="BorderBrush" Value="#E91E63"/>
-												</DataTrigger>
-											</Style.Triggers>
-										</Style>
-									</Button.Style>
-								</Button>
-								<Button Content="4x" Width="40" Height="28" Margin="2,0" FontSize="11"
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Background" Value="{DynamicResource Bg.Control}"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource Fg.Primary}"/>
+                                            <Setter Property="BorderBrush" Value="{DynamicResource Border.Subtle}"/>
+                                            <Setter Property="BorderThickness" Value="1"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSpeed2x}" Value="True">
+                                                    <Setter Property="Background" Value="#E91E63"/>
+                                                    <Setter Property="Foreground" Value="White"/>
+                                                    <Setter Property="BorderBrush" Value="#E91E63"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button Content="4x" Width="40" Height="28" Margin="2,0" FontSize="11"
                                         Command="{Binding PlaySpeedCommand}" CommandParameter="4">
-									<Button.Style>
-										<Style TargetType="Button">
-											<Setter Property="Background" Value="#F5F5F5"/>
-											<Setter Property="Foreground" Value="#333"/>
-											<Setter Property="BorderBrush" Value="#DDD"/>
-											<Setter Property="BorderThickness" Value="1"/>
-											<Style.Triggers>
-												<DataTrigger Binding="{Binding IsSpeed4x}" Value="True">
-													<Setter Property="Background" Value="#E91E63"/>
-													<Setter Property="Foreground" Value="White"/>
-													<Setter Property="BorderBrush" Value="#E91E63"/>
-												</DataTrigger>
-											</Style.Triggers>
-										</Style>
-									</Button.Style>
-								</Button>
-							</StackPanel>
-						</Grid>
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Background" Value="{DynamicResource Bg.Control}"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource Fg.Primary}"/>
+                                            <Setter Property="BorderBrush" Value="{DynamicResource Border.Subtle}"/>
+                                            <Setter Property="BorderThickness" Value="1"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSpeed4x}" Value="True">
+                                                    <Setter Property="Background" Value="#E91E63"/>
+                                                    <Setter Property="Foreground" Value="White"/>
+                                                    <Setter Property="BorderBrush" Value="#E91E63"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
 
                         <Separator Margin="0,0,0,10"/>
 
                         <!-- 操作流水（两种模式共用） -->
-                        <TextBlock Text="操作流水" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <TextBlock Text="操作流水" FontSize="13" FontWeight="Bold" Margin="0,0,0,8" Foreground="{DynamicResource Fg.Primary}"/>
 
-                        <Border Background="#F8F8F8" CornerRadius="4" Padding="0" MinHeight="50">
+                        <Border Background="{DynamicResource Bg.Control}" CornerRadius="4" Padding="0" MinHeight="50">
                             <Grid>
                                 <!-- 空数据提示 -->
-                                <TextBlock Text="暂无操作" Foreground="#999" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12">
+                                <TextBlock Text="暂无操作" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -759,14 +802,14 @@
                                 <ItemsControl ItemsSource="{Binding TradeRecords}" Margin="8,6">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border BorderBrush="#EEE" BorderThickness="0,0,0,1" Padding="0,6">
+                                            <Border BorderBrush="{DynamicResource Border.Subtle}" BorderThickness="0,0,0,1" Padding="0,6">
                                                 <StackPanel>
                                                     <DockPanel>
-                                                        <TextBlock Text="{Binding Type}" FontSize="13" FontWeight="Bold" Foreground="#333"/>
-                                                        <TextBlock Text="{Binding Date}" FontSize="11" Foreground="#999" HorizontalAlignment="Right"/>
+                                                        <TextBlock Text="{Binding Type}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource Fg.Primary}"/>
+                                                        <TextBlock Text="{Binding Date}" FontSize="11" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Right"/>
                                                     </DockPanel>
-                                                    <TextBlock Margin="0,2,0,0">
-                                                        <Run Text="{Binding Price, StringFormat={}{0:F2}}" FontSize="12" Foreground="#666"/>
+                                                    <TextBlock Margin="0,2,0,0" Foreground="{DynamicResource Fg.Primary}">
+                                                        <Run Text="{Binding Price, StringFormat={}{0:F2}}" FontSize="12" Foreground="{DynamicResource Fg.Primary}"/>
                                                         <Run Text=" · " Foreground="#CCC"/>
                                                         <Run Text="{Binding Profit}" FontSize="12" FontWeight="Bold" Foreground="#E91E63"/>
                                                     </TextBlock>

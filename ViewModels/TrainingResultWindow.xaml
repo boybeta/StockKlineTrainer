@@ -20,7 +20,7 @@
     </shell:WindowChrome.WindowChrome>
 
     <!-- 外层圆角 + 阴影（和 DoubleBlindTrainWindow 统一做法） -->
-    <Border Background="White"
+    <Border Background="{DynamicResource Bg.CardAlt}"
             CornerRadius="12"
             Margin="8">
         <Border.Effect>
@@ -39,6 +39,7 @@
                        FontSize="18"
                        FontWeight="Bold"
                        HorizontalAlignment="Center"
+                       Foreground="{DynamicResource Fg.Primary}"
                        Margin="0,20,0,0" />
 
             <Grid Grid.Row="1" Margin="30,20">
@@ -57,34 +58,34 @@
                     <RowDefinition Height="36" />
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="训练标的:" FontSize="13" Foreground="#666" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="训练标的:" FontSize="13" Foreground="{DynamicResource Fg.Secondary}" VerticalAlignment="Center" />
                 <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding StockName}" FontSize="13" FontWeight="Bold" Foreground="#FF8C00" HorizontalAlignment="Right" VerticalAlignment="Center" />
 
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="训练时间:" FontSize="13" Foreground="#666" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="训练时间:" FontSize="13" Foreground="{DynamicResource Fg.Secondary}" VerticalAlignment="Center" />
                 <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DateRange}" FontSize="13" FontWeight="Bold" Foreground="#2196F3" HorizontalAlignment="Right" VerticalAlignment="Center" />
 
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="本局盈亏:" FontSize="13" Foreground="#666" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="本局盈亏:" FontSize="13" Foreground="{DynamicResource Fg.Secondary}" VerticalAlignment="Center" />
                 <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ProfitAmount, StringFormat={}{0:F2}}" FontSize="13" FontWeight="Bold" Foreground="{Binding ProfitBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
 
-                <TextBlock Grid.Row="3" Grid.Column="0" Text="本局收益:" FontSize="13" Foreground="#666" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="本局收益:" FontSize="13" Foreground="{DynamicResource Fg.Secondary}" VerticalAlignment="Center" />
                 <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ProfitPct, StringFormat={}{0:F2}%}" FontSize="13" FontWeight="Bold" Foreground="{Binding ProfitBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
 
-                <TextBlock Grid.Row="4" Grid.Column="0" Text="区间涨跌幅:" FontSize="13" Foreground="#666" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="区间涨跌幅:" FontSize="13" Foreground="{DynamicResource Fg.Secondary}" VerticalAlignment="Center" />
                 <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding IntervalChangePct, StringFormat={}{0:F2}%}" FontSize="13" FontWeight="Bold" Foreground="{Binding IntervalBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
 
-                <TextBlock Grid.Row="5" Grid.Column="0" Text="开仓次数:" FontSize="13" Foreground="#666" VerticalAlignment="Center" />
-                <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding OpenCount}" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="5" Grid.Column="0" Text="开仓次数:" FontSize="13" Foreground="{DynamicResource Fg.Secondary}" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding OpenCount}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource Fg.Primary}" HorizontalAlignment="Right" VerticalAlignment="Center" />
 
-                <TextBlock Grid.Row="6" Grid.Column="0" Text="开仓胜率:" FontSize="13" Foreground="#666" VerticalAlignment="Center" />
-                <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding WinRate, StringFormat={}{0:F2}%}" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="6" Grid.Column="0" Text="开仓胜率:" FontSize="13" Foreground="{DynamicResource Fg.Secondary}" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding WinRate, StringFormat={}{0:F2}%}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource Fg.Primary}" HorizontalAlignment="Right" VerticalAlignment="Center" />
 
-                <TextBlock Grid.Row="7" Grid.Column="0" Text="本局用时:" FontSize="13" Foreground="#666" VerticalAlignment="Center" />
-                <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding ElapsedTime}" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="7" Grid.Column="0" Text="本局用时:" FontSize="13" Foreground="{DynamicResource Fg.Secondary}" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding ElapsedTime}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource Fg.Primary}" HorizontalAlignment="Right" VerticalAlignment="Center" />
             </Grid>
 
             <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,20">
                 <Button Content="复盘" Width="100" Height="38" Margin="5,0"
-                        Background="White" Foreground="#E91E63" BorderBrush="#E91E63" BorderThickness="1"
+                        Background="{DynamicResource Bg.Control}" Foreground="{DynamicResource Accent.Pink}" BorderBrush="{DynamicResource Accent.Pink}" BorderThickness="1"
                         FontSize="13" Cursor="Hand" Click="Review_Click">
                     <Button.Style>
                         <Style TargetType="Button">
@@ -104,7 +105,7 @@
                     </Button.Style>
                 </Button>
                 <Button Content="结束" Width="100" Height="38" Margin="5,0"
-                        Background="White" Foreground="#666" BorderBrush="#DDD" BorderThickness="1"
+                        Background="{DynamicResource Bg.Control}" Foreground="{DynamicResource Fg.Secondary}" BorderBrush="{DynamicResource Border.Subtle}" BorderThickness="1"
                         FontSize="13" Cursor="Hand" Click="End_Click">
                     <Button.Style>
                         <Style TargetType="Button">
