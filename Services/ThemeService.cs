@@ -14,8 +14,9 @@ namespace BaozhuKLineTrainer.Services
     /// </summary>
     public static class ThemeService
     {
-        private static readonly string ConfigDir = @"E:\baozhu\config";
-        private static readonly string ConfigPath = Path.Combine(ConfigDir, "theme.txt");
+        // 2026-09-30：去 E 盘硬编码，改走 AppPaths（老用户 E:\baozhu，新用户 程序目录\baozhu-data）
+        private static string ConfigDir => AppPaths.ConfigDir;
+        private static string ConfigPath => Path.Combine(AppPaths.ConfigDir, "theme.txt");
 
         public static AppTheme Current { get; private set; } = AppTheme.Dark;
 

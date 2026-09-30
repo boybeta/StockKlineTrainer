@@ -1,4 +1,4 @@
-﻿using ScottPlot.Plottables;
+using ScottPlot.Plottables;
 using BaozhuKLineTrainer;
 using System.Windows;
 
@@ -40,7 +40,7 @@ namespace BaozhuKLineTrainer
         private void BtnBack_Click(object sender, RoutedEventArgs e)
         {
             var result = MessageBox.Show(
-                "确定要返回首页吗？\n\n本局训练进度将被放弃，盈亏不计入爆竹。",
+                "确定要返回首页吗？\n\n本局训练进度将被放弃，盈亏不计入火星币。",
                 "返回首页",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);

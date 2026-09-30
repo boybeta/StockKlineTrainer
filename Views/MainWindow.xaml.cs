@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -28,7 +28,7 @@ namespace BaozhuKLineTrainer
         {
             InitializeComponent();
             Loaded += MainWindow_Loaded;
-            // 主题切换：爆竹曲线配色跟随（重刷首页数据时会按当前主题重设颜色）
+            // 主题切换：火星币曲线配色跟随（重刷首页数据时会按当前主题重设颜色）
             ThemeService.ThemeChanged += _ => RefreshHomeData();
         }
 
@@ -104,6 +104,29 @@ namespace BaozhuKLineTrainer
             }
         }
 
+        /// <summary>段位徽章：程序目录 images\{段位名}.png（白银小账户.png / 黄金账户.png …），不存在则留空</summary>
+        private void LoadRankIcon(int rankIdx)
+        {
+            try
+            {
+                var bmp = RankService.LoadRankIcon(rankIdx);
+                if (bmp == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DIAG] 段位徽章不存在: {RankService.GetRankIconPath(rankIdx)}");
+                    RankIcon.Visibility = Visibility.Collapsed;
+                    return;
+                }
+                RankIcon.Source = bmp;
+                RankIcon.Visibility = Visibility.Visible;
+                System.Diagnostics.Debug.WriteLine($"[DIAG] 段位徽章已加载: {RankService.GetRankIconPath(rankIdx)}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DIAG] 段位徽章加载失败: {ex.Message}");
+                RankIcon.Visibility = Visibility.Collapsed;
+            }
+        }
+
         /// <summary>点击【盲盘训练】跳转双盲训练窗口</summary>
         private void OpenDoubleBlindTrain_Click(object sender, MouseButtonEventArgs e)
         {
@@ -120,11 +143,10 @@ namespace BaozhuKLineTrainer
             trainWindow.ShowDialog();
         }
 
-        /// <summary>首页加载：读取训练记录，刷新统计与爆竹数量曲线</summary>
         private void MainWindow_Loaded(object? sender, RoutedEventArgs e)
         {
-            LoadAvatar();        // ← 新增：加载头像
-            RefreshHomeData();   // 首次加载
+            LoadAvatar();        // 加载头像
+            RefreshHomeData();   // 首次加载（段位徽章在内部按峰值加载）
         }
 
         /// <summary>点击【指数训练】→ 打开配置窗（指数模式）</summary>
@@ -175,22 +197,34 @@ namespace BaozhuKLineTrainer
             trainWindow.ShowDialog();
         }
 
-        /// <summary>重新读取训练记录，刷新统计与爆竹曲线（训练结算返回首页时调用）</summary>
+        /// <summary>训练记录标签：config_json 里存类型标记 → 中文名；老记录为空兜底"双盲训练"</summary>
+        private static string TrainTypeName(string trainType) => trainType switch
+        {
+            "LimitUp" => "涨停训练",
+            "Index" => "指数训练",
+            "Future" => "期货训练",
+            "HK" => "港股训练",
+            "US" => "美股训练",
+            "Bond" => "可转债训练",
+            "ETF" => "ETF 训练",
+            "" => "双盲训练",   // 老记录（修复前结算的）没有类型标记
+            _ => "盲盘训练",   // "Stock"
+        };
+
+        /// <summary>重新读取训练记录，刷新统计与火星币曲线（训练结算返回首页时调用）</summary>
         public void RefreshHomeData()
         {
             try
             {
-                // 数据库固定读 E:\baozhu\stockdata（正主），没有时才退回程序目录
-                string dbPath = File.Exists(@"E:\baozhu\stockdata\cy_stock.db")
-                    ? @"E:\baozhu\stockdata\cy_stock.db"
-                    : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "stockdata", "cy_stock.db");
+                // 2026-09-30：数据库路径改走 AppPaths（与 MainViewModel 同一口径）
+                string dbPath = AppPaths.GetDbPath();
                 var db = new DatabaseService(dbPath);
                 db.EnsureTrainingRecordTable();   // 幂等建表
 
                 var (gameCount, latest) = db.GetHomeSummary();
                 System.Diagnostics.Debug.WriteLine($"[DIAG] 统计读取：场次={gameCount} 最新值={latest:F0}");
                 TxtTrainCount.Text = gameCount.ToString();
-                TxtFirecracker.Text = $"爆竹: {latest:N0}";
+                TxtFirecracker.Text = $"火星币: {latest:N0}";
 
                 // 训练数据 12 格
                 var st = db.GetTrainingStats();
@@ -207,12 +241,19 @@ namespace BaozhuKLineTrainer
                 TxtStatMaxProfit.Text = $"最大盈利：{st.maxProfitPct:F1}%";
                 TxtTrainSummary.Text = $"训练结果：{st.winGames}胜 {st.gameCount - st.winGames}负";
                 TxtCurveGames.Text = $"共 {st.gameCount} 场训练";
+                // ★ 模拟训练卡片底部 4 项：持仓时间(平均)/总胜率/暴富次数/破产次数
+                TxtHoldDays.Text = $"{st.avgHoldDays:F1}天";
+                TxtTotalWinRate.Text = $"{st.gameWinRate:F1}%";
+                var (brokeCount, boomCount) = db.GetBoomBrokeCounts();
+                TxtBoomCount.Text = boomCount.ToString();
+                TxtBrokeCount.Text = brokeCount.ToString();
 
                 var records = db.GetRecentRecords(50);
                 RecordList.ItemsSource = records.Select(r => new
                 {
                     StockName = r.stockName,
                     StockCode = r.stockCode,
+                    TrainTypeText = TrainTypeName(r.trainType),
                     TimeText = r.time,
                     HoldRateText = $"{r.holdRate:F2}%",
                     HeavyRateText = $"{r.heavyRate:F2}%",
@@ -245,12 +286,24 @@ namespace BaozhuKLineTrainer
                     }
                 }
                 TxtStatMaxDD.Text = $"最大回撤：{maxDD:F1}%";
+                // ===== 段位刷新：按曲线历史峰值定段，只升不降 =====
+                int rankIdx = RankService.CalcRankIndex(latest);   // ★ 按历史峰值定段：破产/暴富重置后段位不回落
+                // ★ 段位星标：点亮前 rankIdx+1 颗（黄金=2 颗…传奇=6 颗全亮）
+                var starLit = new SolidColorBrush(Color.FromRgb(0xFF, 0xD7, 0x70));    // 金色
+                var starDim = new SolidColorBrush(Color.FromRgb(0x77, 0x77, 0x99));    // 暗灰
+                for (int i = 1; i <= 6; i++)
+                {
+                    if (FindName($"Star{i}") is MaterialDesignThemes.Wpf.PackIcon star)
+                        star.Foreground = i <= rankIdx + 1 ? starLit : starDim;
+                }
+                TxtRankName.Text = RankService.Ranks[rankIdx].Name;
+                LoadRankIcon(rankIdx);
 
                 if (curve.Count >= 2)
                 {
                     CurvePlot.Visibility = Visibility.Visible;
                     CurvePlot.Plot.Clear();
-                    // 主题：爆竹曲线图配色随当前主题
+                    // 主题：火星币曲线图配色随当前主题
                     CurvePlot.Plot.FigureBackground.Color = ChartTheme.FigureBg(ThemeService.Current);
                     CurvePlot.Plot.DataBackground.Color = ChartTheme.DataBg(ThemeService.Current);
                     CurvePlot.Plot.Axes.Color(ChartTheme.Axis(ThemeService.Current));
@@ -315,18 +368,17 @@ namespace BaozhuKLineTrainer
         private void BtnClose_Click(object sender, RoutedEventArgs e)
             => Close();
 
-        /// <summary>重置本金：清空全部训练记录，爆竹回到 10000</summary>
+        /// <summary>重置本金：清空全部训练记录，火星币回到 10000</summary>
         private void BtnResetFirecrackers_Click(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show("确定要重置吗？\n\n将清空所有训练记录，爆竹回到 10,000，此操作不可恢复！",
+            var result = MessageBox.Show("确定要重置吗？\n\n将清空所有训练记录，火星币回到 10,000，此操作不可恢复！",
                 "重置本金", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (result != MessageBoxResult.Yes) return;
 
             try
             {
-                string dbPath = File.Exists(@"E:\baozhu\stockdata\cy_stock.db")
-                    ? @"E:\baozhu\stockdata\cy_stock.db"
-                    : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "stockdata", "cy_stock.db");
+                // 2026-09-30：数据库路径改走 AppPaths（与 MainViewModel 同一口径）
+                string dbPath = AppPaths.GetDbPath();
                 var db = new DatabaseService(dbPath);
                 db.ResetTrainingRecords();
                 RefreshHomeData();

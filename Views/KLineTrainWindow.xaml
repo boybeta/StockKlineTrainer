@@ -1,4 +1,4 @@
-﻿<Window x:Class="BaozhuKLineTrainer.KLineTrainWindow"
+<Window x:Class="BaozhuKLineTrainer.KLineTrainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -84,6 +84,12 @@
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
     </Window.Resources>
 
+    <!-- ★ Bug4 修复：H / Space 快捷键推进K线（HoldOrWatchCommand） -->
+    <Window.InputBindings>
+        <KeyBinding Key="H" Command="{Binding HoldOrWatchCommand}"/>
+        <KeyBinding Key="Space" Command="{Binding HoldOrWatchCommand}"/>
+    </Window.InputBindings>
+
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
@@ -127,7 +133,7 @@
                         <materialDesign:PackIcon Kind="ArrowLeft" Width="20" Height="20" Foreground="{DynamicResource Fg.Secondary}"/>
                     </Button>
                     <Image Source="pack://application:,,,/Images/logo.png" Height="32" Margin="10,0"/>
-                    <TextBlock Text="爆竹K线训练" FontSize="16" FontWeight="Bold"
+                    <TextBlock Text="火星币K线训练" FontSize="16" FontWeight="Bold"
                                VerticalAlignment="Center" Margin="8,0" Foreground="{DynamicResource Fg.Primary}"/>
                 </DockPanel>
             </Border>
@@ -138,10 +144,6 @@
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="10"/>
-                        <ColumnDefinition Width="1"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="1"/>
-                        <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="1"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="1"/>
@@ -214,25 +216,12 @@
 
                     <Border Grid.Column="13" Background="{DynamicResource Border.Strong}" Width="1" Margin="0,0"/>
 
-                    <!-- 量比 -->
-                    <StackPanel Grid.Column="14" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="40,0,0,0">
-                        <TextBlock Text="0.52" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource Fg.Primary}" HorizontalAlignment="Left"/>
-                        <TextBlock Text="量比" FontSize="11" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Left" Margin="0,2,0,0"/>
-                    </StackPanel>
-
-                    <Border Grid.Column="15" Background="{DynamicResource Border.Strong}" Width="1" Margin="0,0"/>
-
-                    <!-- 换手 -->
-                    <StackPanel Grid.Column="16" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="40,0,0,0">
-                        <TextBlock Text="2.0" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource Fg.Primary}" HorizontalAlignment="Left"/>
-                        <TextBlock Text="换手" FontSize="11" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Left" Margin="0,2,0,0"/>
-                    </StackPanel>
-
-                    <Border Grid.Column="17" Background="{DynamicResource Border.Strong}" Width="1" Margin="0,0"/>
+                    <!-- ★ Bug6 修复②：量比/换手（Grid.Column 14~17）数据库无此字段，连同分隔线一起移除，不留假数据 -->
 
                     <!-- 日期 -->
-                    <StackPanel Grid.Column="18" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="10,0,0,0">
-                        <TextBlock Text="xxxx-xx" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource Fg.Primary}" HorizontalAlignment="Left"/>
+                    <StackPanel Grid.Column="14" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="10,0,0,0">
+                        <!-- ★ Bug6 修复①：日期改绑 CurrentDate（原来硬编码"xxxx-xx"） -->
+                        <TextBlock Text="0000-00-00" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource Fg.Primary}" HorizontalAlignment="Left"/>
                         <TextBlock Text="日期" FontSize="11" Foreground="{DynamicResource Fg.Muted}" HorizontalAlignment="Left" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Grid>
@@ -240,26 +229,41 @@
 
             <!-- 3. 周期切换 -->
             <Border Grid.Row="2" Background="{DynamicResource Bg.Card}" CornerRadius="6" Margin="0,0,0,6" Padding="0,0,0,0">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Cursor="">
-                    <Button Content="日" Style="{StaticResource PeriodDayBtn}"
-                            Command="{Binding SwitchPeriodCommand}" CommandParameter="Day"
-                            />
-                    <Button Content="周" Style="{StaticResource PeriodWeekBtn}"
-                            Command="{Binding SwitchPeriodCommand}" CommandParameter="Week"
-                            />
-                    <Button Content="月" Style="{StaticResource PeriodMonthBtn}"
-                            Command="{Binding SwitchPeriodCommand}" CommandParameter="Month"
-                            />
-                    <Button Content="分时" Style="{StaticResource PeriodBtn}"/>
-                    <Button Content="1分" Style="{StaticResource PeriodBtn}"/>
-                    <Button Content="5分" Style="{StaticResource PeriodBtn}"/>
-                    <Button Content="15分" Style="{StaticResource PeriodBtn}"/>
-                    <Button Content="30分" Style="{StaticResource PeriodBtn}"/>
-                    <Button Content="60分" Style="{StaticResource PeriodBtn}"/>
-                    <Button Content="✎" Width="32" Style="{StaticResource PeriodBtn}" Margin="12,0,3,0" FontSize="14"/>
-                    <Button Content="☰" Width="32" Style="{StaticResource PeriodBtn}" Margin="3,0" FontSize="14"/>
-                    <Button Content="⚙" Width="32" Style="{StaticResource PeriodBtn}" Margin="3,0,0,0" FontSize="14"/>
-                </StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <!-- ★ Bug6 修复③：InfoText（涨停局"锚定涨停日"提示等）挂到周期栏左侧，信息栏下方可见 -->
+                    <!-- ★ 审查修复①：TextBlock 独占 * 列，超长时 Ellipsis 才生效，不再画到右侧按钮底下 -->
+                    <!-- InfoText 已弃用：双盲模式不暴露股票代码/真实K线日期，整段隐藏（占位保留，随时可删） -->
+                    <TextBlock Grid.Column="0" Text="****" FontSize="11" Foreground="{DynamicResource Fg.Muted}"
+                               VerticalAlignment="Center" Margin="10,0"
+                               Visibility="Collapsed"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Cursor="">
+                        <Button Content="日" Style="{StaticResource PeriodDayBtn}"
+                            IsEnabled="{Binding ShowPeriodSwitch}"
+                            Visibility="{Binding ShowPeriodSwitch, Converter={StaticResource BooleanToVisibilityConverter}}"
+                            Command="{Binding SwitchPeriodCommand}" CommandParameter="Day"/>
+                        <Button Content="周" Style="{StaticResource PeriodWeekBtn}"
+                            IsEnabled="{Binding ShowPeriodSwitch}"
+                            Visibility="{Binding ShowPeriodSwitch, Converter={StaticResource BooleanToVisibilityConverter}}"
+                            Command="{Binding SwitchPeriodCommand}" CommandParameter="Week"/>
+                        <Button Content="月" Style="{StaticResource PeriodMonthBtn}"
+                            IsEnabled="{Binding ShowPeriodSwitch}"
+                            Visibility="{Binding ShowPeriodSwitch, Converter={StaticResource BooleanToVisibilityConverter}}"
+                            Command="{Binding SwitchPeriodCommand}" CommandParameter="Month" Cursor="Hand"/>
+                        <Button Content="分时" Style="{StaticResource PeriodBtn}"/>
+                        <Button Content="1分" Style="{StaticResource PeriodBtn}"/>
+                        <Button Content="5分" Style="{StaticResource PeriodBtn}"/>
+                        <Button Content="15分" Style="{StaticResource PeriodBtn}"/>
+                        <Button Content="30分" Style="{StaticResource PeriodBtn}"/>
+                        <Button Content="60分" Style="{StaticResource PeriodBtn}"/>
+                        <Button Content="✎" Width="32" Style="{StaticResource PeriodBtn}" Margin="12,0,3,0" FontSize="14"/>
+                        <Button Content="☰" Width="32" Style="{StaticResource PeriodBtn}" Margin="3,0" FontSize="14"/>
+                        <Button Content="⚙" Width="32" Style="{StaticResource PeriodBtn}" Margin="3,0,0,0" FontSize="14"/>
+                    </StackPanel>
+                </Grid>
             </Border>
 
             <!-- 4. K线主图 -->
@@ -399,13 +403,13 @@
                                 <!-- 借款金额 -->
                             </Grid.RowDefinitions>
 
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="总爆竹" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}" FontSize="12"/>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="总火星币" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}" FontSize="12"/>
                             <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding TotalFirecrackers, StringFormat=F2, FallbackValue=10000.00}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}"/>
 
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="使用爆竹数量" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}" FontSize="12"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="使用火星币数量" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}" FontSize="12"/>
                             <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding UsedFirecrackers, StringFormat=F2, FallbackValue=0.00}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}"/>
 
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="未使用爆竹数量" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}" FontSize="12"/>
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="未使用火星币数量" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}" FontSize="12"/>
                             <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding UnusedFirecrackers, StringFormat=F2, FallbackValue=10000.00}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}"/>
 
                             <TextBlock Grid.Row="3" Grid.Column="0" Text="本局收益" VerticalAlignment="Center" Foreground="{DynamicResource Fg.Primary}" FontSize="12"/>

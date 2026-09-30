@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Input;
@@ -221,7 +221,7 @@ namespace BaozhuKLineTrainer
                 SliderSplitPosition.Value += 10;
         }
 
-        // ========== 分仓模式与爆竹比例联动 ==========
+        // ========== 分仓模式与火星币比例联动 ==========
 
         private void TglSplitPosition_Checked(object sender, RoutedEventArgs e)
         {

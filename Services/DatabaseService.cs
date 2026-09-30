@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.Sqlite;
+using Microsoft.Data.Sqlite;
 using BaozhuKLineTrainer.Models;
 using System;
 using System.Collections.Generic;
@@ -72,11 +72,13 @@ namespace BaozhuKLineTrainer.Services
             while (reader.Read())
             {
                 string dateStr = reader.GetString(0);
-                DateTime date = ParseTradeDate(dateStr);
+                // ★ Bug3 修复：trade_date 解析失败跳过该行，不再造"今天"的假K线
+                var parsedDate = ParseTradeDate(dateStr);
+                if (!parsedDate.HasValue) continue;
 
                 data.Add(new StockData
                 {
-                    Date = date,
+                    Date = parsedDate.Value,
                     Open = reader.GetDouble(1),
                     High = reader.GetDouble(2),
                     Low = reader.GetDouble(3),
@@ -157,9 +159,13 @@ namespace BaozhuKLineTrainer.Services
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
+                // ★ Bug3 修复：trade_date 解析失败跳过该行，不再造"今天"的假K线
+                var tradeDate = ParseTradeDate(reader.GetString(0));
+                if (!tradeDate.HasValue) continue;
+
                 data.Add(new StockData
                 {
-                    Date = ParseTradeDate(reader.GetString(0)),
+                    Date = tradeDate.Value,
                     Open = reader.GetDouble(1),
                     High = reader.GetDouble(2),
                     Low = reader.GetDouble(3),
@@ -220,9 +226,13 @@ namespace BaozhuKLineTrainer.Services
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
+                // ★ Bug3 修复：trade_date 解析失败跳过该行，不再造"今天"的假K线
+                var tradeDate = ParseTradeDate(reader.GetString(0));
+                if (!tradeDate.HasValue) continue;
+
                 data.Add(new StockData
                 {
-                    Date = ParseTradeDate(reader.GetString(0)),
+                    Date = tradeDate.Value,
                     Open = reader.GetDouble(1),
                     High = reader.GetDouble(2),
                     Low = reader.GetDouble(3),
@@ -283,9 +293,13 @@ namespace BaozhuKLineTrainer.Services
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
+                // ★ Bug3 修复：trade_date 解析失败跳过该行，不再造"今天"的假K线
+                var tradeDate = ParseTradeDate(reader.GetString(0));
+                if (!tradeDate.HasValue) continue;
+
                 data.Add(new StockData
                 {
-                    Date = ParseTradeDate(reader.GetString(0)),
+                    Date = tradeDate.Value,
                     Open = reader.GetDouble(1),
                     High = reader.GetDouble(2),
                     Low = reader.GetDouble(3),
@@ -346,9 +360,13 @@ namespace BaozhuKLineTrainer.Services
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
+                // ★ Bug3 修复：trade_date 解析失败跳过该行，不再造"今天"的假K线
+                var tradeDate = ParseTradeDate(reader.GetString(0));
+                if (!tradeDate.HasValue) continue;
+
                 data.Add(new StockData
                 {
-                    Date = ParseTradeDate(reader.GetString(0)),
+                    Date = tradeDate.Value,
                     Open = reader.GetDouble(1),
                     High = reader.GetDouble(2),
                     Low = reader.GetDouble(3),
@@ -409,9 +427,13 @@ namespace BaozhuKLineTrainer.Services
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
+                // ★ Bug3 修复：trade_date 解析失败跳过该行，不再造"今天"的假K线
+                var tradeDate = ParseTradeDate(reader.GetString(0));
+                if (!tradeDate.HasValue) continue;
+
                 data.Add(new StockData
                 {
-                    Date = ParseTradeDate(reader.GetString(0)),
+                    Date = tradeDate.Value,
                     Open = reader.GetDouble(1),
                     High = reader.GetDouble(2),
                     Low = reader.GetDouble(3),
@@ -424,10 +446,10 @@ namespace BaozhuKLineTrainer.Services
 
 
         /// <summary>防脏 trade_date 解析：兼容 "yyyyMMdd" / "yyyy-MM-dd" / "yyyyMMdd HH:mm:ss"（美股等脏数据），
-        /// 全部失败降级 DateTime.Today，绝不抛异常把训练炸掉</summary>
-        private static DateTime ParseTradeDate(string dateStr)
+        /// 全部失败返回 null（由调用方跳过该行），绝不抛异常把训练炸掉</summary>
+        private static DateTime? ParseTradeDate(string dateStr)
         {
-            if (string.IsNullOrWhiteSpace(dateStr)) return DateTime.Today;
+            if (string.IsNullOrWhiteSpace(dateStr)) return null;
             string s = dateStr.Trim();
 
             // 先截前 8 位按 yyyyMMdd 解析（覆盖 "20120518 00:00:00" 这类脏格式）
@@ -444,7 +466,7 @@ namespace BaozhuKLineTrainer.Services
             if (DateTime.TryParse(s, out var d3))
                 return d3;
 
-            return DateTime.Today;   // 彻底认不出 → 降级今天，保证能开局
+            return null;   // 彻底认不出 → 返回 null，调用方跳过该行（Bug3 修复：不再造"今天"的假K线污染窗口）
         }
 
         /// <summary>
@@ -589,9 +611,9 @@ namespace BaozhuKLineTrainer.Services
             return counts;
         }
 
-        /// <summary>爆竹数量曲线数据：按结算顺序返回（时间, 累计爆竹）。
+        /// <summary>火星币数量曲线数据：按结算顺序返回（时间, 累计火星币）。
         /// 累计口径：10000 起步，每局盈亏额累加（盈利为正则加，亏损为负则减）</summary>
-        /// <summary>爆竹数量曲线数据（带诊断输出）</summary>
+        /// <summary>火星币数量曲线数据（带诊断输出）</summary>
         public List<(string time, double firecrackers)> GetFirecrackerCurve()
         {
             var list = new List<(string, double)>();
@@ -612,7 +634,7 @@ namespace BaozhuKLineTrainer.Services
             return list;
         }
 
-        /// <summary>首页顶部统计：训练场次 + 最新累计爆竹（无记录时返回默认值 10000）</summary>
+        /// <summary>首页顶部统计：训练场次 + 最新累计火星币（无记录时返回默认值 10000）</summary>
         public (int gameCount, double latestFirecrackers) GetHomeSummary()
         {
             using var conn = new SqliteConnection(_connectionString);
@@ -709,18 +731,33 @@ namespace BaozhuKLineTrainer.Services
             new SqliteCommand("DELETE FROM cy_training_record", conn).ExecuteNonQuery();
         }
 
-        /// <summary>最近 N 局训练记录（首页"训练记录"列表用，按时间倒序，排除破产重置记录）</summary>
-        public List<(string stockName, string stockCode, string period, string time, double holdRate,
-                     double heavyRate, double openWinRate, double intervalPct, double profitPct,
-                     int elapsedSec, string startDate, string endDate)> GetRecentRecords(int limit = 50)
+        /// <summary>暴富/破产次数：stock_code='RICH' 为暴富重置记录、'RESET' 为破产重置记录（只用于曲线跳回，不计入训练场次）</summary>
+        public (int brokeCount, int boomCount) GetBoomBrokeCounts()
         {
-            var list = new List<(string, string, string, string, double, double, double, double, double, int, string, string)>();
             using var conn = new SqliteConnection(_connectionString);
             conn.Open();
             var cmd = new SqliteCommand(@"
-                SELECT stock_name, stock_code, period, train_time,
+                SELECT COALESCE(SUM(CASE WHEN stock_code = 'RESET' THEN 1 ELSE 0 END), 0),
+                       COALESCE(SUM(CASE WHEN stock_code = 'RICH'  THEN 1 ELSE 0 END), 0)
+                FROM cy_training_record", conn);
+            using var reader = cmd.ExecuteReader();
+            if (reader.Read())
+                return (reader.GetInt32(0), reader.GetInt32(1));
+            return (0, 0);
+        }
+
+        /// <summary>最近 N 局训练记录（首页"训练记录"列表用，按时间倒序，排除破产重置记录）</summary>
+        public List<(string stockName, string stockCode, string period, string time, double holdRate,
+             double heavyRate, double openWinRate, double intervalPct, double profitPct,
+             int elapsedSec, string startDate, string endDate, string trainType)> GetRecentRecords(int limit = 50)
+        {
+            var list = new List<(string, string, string, string, double, double, double, double, double, int, string, string, string)>();
+            using var conn = new SqliteConnection(_connectionString);
+            conn.Open();
+            var cmd = new SqliteCommand(@"
+                                SELECT stock_name, stock_code, period, train_time,
                        hold_days, watch_days, heavy_hold_days, win_rate, interval_pct, profit_pct,
-                       elapsed_sec, start_date, end_date
+                       elapsed_sec, start_date, end_date, config_json
                 FROM cy_training_record
                 WHERE stock_code <> 'RESET'
                 ORDER BY id DESC LIMIT @limit", conn);
@@ -735,13 +772,14 @@ namespace BaozhuKLineTrainer.Services
                 string time = reader.IsDBNull(3) ? "" : reader.GetString(3);
                 if (time.Length >= 16) time = time.Substring(5, 11);   // "MM-dd HH:mm"
                 list.Add((reader.IsDBNull(0) ? "" : reader.GetString(0),
-                          reader.IsDBNull(1) ? "" : reader.GetString(1),
-                          reader.IsDBNull(2) ? "" : reader.GetString(2),
-                          time, holdRate, heavyRate,
-                          reader.GetDouble(7), reader.GetDouble(8), reader.GetDouble(9),
-                          reader.GetInt32(10),
-                          reader.IsDBNull(11) ? "" : reader.GetString(11),
-                          reader.IsDBNull(12) ? "" : reader.GetString(12)));
+                     reader.IsDBNull(1) ? "" : reader.GetString(1),
+                     reader.IsDBNull(2) ? "" : reader.GetString(2),
+                     time, holdRate, heavyRate,
+                     reader.GetDouble(7), reader.GetDouble(8), reader.GetDouble(9),
+                     reader.GetInt32(10),
+                     reader.IsDBNull(11) ? "" : reader.GetString(11),
+                     reader.IsDBNull(12) ? "" : reader.GetString(12),
+                     reader.IsDBNull(13) ? "" : reader.GetString(13)));   // ★ trainType（config_json）
             }
             return list;
         }

@@ -1,9 +1,9 @@
-﻿<Window x:Class="BaozhuKLineTrainer.LoginWindow"
+<Window x:Class="BaozhuKLineTrainer.LoginWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="clr-namespace:MaterialDesignThemes.Wpf;assembly=MaterialDesignThemes.Wpf"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="爆竹K线训练助手" Height="960" Width="1500" WindowStartupLocation="CenterScreen"
+        Title="火星币K线训练助手" Height="960" Width="1500" WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         Background="{DynamicResource Bg.Window}">
 
@@ -53,7 +53,7 @@
             </Border.Background>
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
                 <materialDesign:PackIcon Kind="Firework" Width="120" Height="120" Foreground="White"/>
-                <TextBlock Text="爆竹K线训练助手" FontSize="42" Foreground="White" Margin="0,24" FontWeight="SemiBold"/>
+                <TextBlock Text="火星币K线训练助手" FontSize="42" Foreground="White" Margin="0,24" FontWeight="SemiBold"/>
                 <TextBlock Text="专业K线训练平台，助您提升交易能力，在股市中游刃有余" 
                            Foreground="White" FontSize="16" TextWrapping="Wrap" TextAlignment="Center" Width="480"/>
             </StackPanel>

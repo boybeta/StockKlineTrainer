@@ -46,7 +46,29 @@
 
 	<ItemGroup>
 	  <Folder Include="Converters\" />
+	  <Folder Include="docs\screenshots\" />
 	  <Folder Include="Themes\" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Update="Images\传奇账户.png">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	  <None Update="Images\星耀账户.png">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	  <None Update="Images\白银小账户.png">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	  <None Update="Images\钻石账户.png">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	  <None Update="Images\铂金账户.png">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	  <None Update="Images\黄金账户.png">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
 	</ItemGroup>
 
 </Project>

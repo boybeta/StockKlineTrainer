@@ -1,4 +1,4 @@
-﻿using ScottPlot;
+using ScottPlot;
 using ScottPlot.WPF;
 using BaozhuKLineTrainer.Models;
 using BaozhuKLineTrainer.Services;
@@ -117,9 +117,9 @@ namespace BaozhuKLineTrainer
         // ===== 训练开始标记线 =====
         private double _startMarkerIndex = -1;
 
-        // ===== 爆竹资金系统 =====
+        // ===== 火星币资金系统 =====
         private const double DefaultInitialFirecrackers = 10000;
-        private const double BankruptcyFirecrackers = 10000;   // 破产线：累计爆竹低于此值，开局自动重置为 10000
+        private const double BankruptcyFirecrackers = 0;   // ★ 2026-09-30 破产线改为 0：火星币 ≤ 0（归零或透支）才触发重置
         private double _initialFirecrackers = DefaultInitialFirecrackers;
         private const double FeeRate = 0.0003;
         private double _cash;
@@ -525,10 +525,8 @@ namespace BaozhuKLineTrainer
         public MainViewModel(TrainingConfig config)
         {
             _config = config;
-            // 数据库固定读 E:\baozhu\stockdata（正主），没有时才退回程序目录
-            string dbPath = File.Exists(@"E:\baozhu\stockdata\cy_stock.db")
-                ? @"E:\baozhu\stockdata\cy_stock.db"
-                : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "stockdata", "cy_stock.db");
+            // 2026-09-30：数据库路径改走 AppPaths（老用户 E 盘优先，开源用户放程序目录 stockdata\）
+            string dbPath = AppPaths.GetDbPath();
             _dbService = new DatabaseService(dbPath);
             _limitUpService = new LimitUpService(dbPath);
 
@@ -559,6 +557,8 @@ namespace BaozhuKLineTrainer
             });
             SwitchPeriodCommand = new RelayCommand(p =>
             {
+                // ★ Bug1 修复②：limit-up 模式在改 SelectedPeriod 之前直接拦截，杜绝状态错乱
+                if (_config.IsLimitUpMode) return;
                 if (p is string s && Enum.TryParse<KLinePeriod>(s, out var period) && period != SelectedPeriod)
                 {
                     var oldPeriod = SelectedPeriod;   // 记住旧周期：进度映射和失败回滚都要用
@@ -577,15 +577,15 @@ namespace BaozhuKLineTrainer
             Debug.WriteLine($"[DIAG] LoadStockList: {swInit.ElapsedMilliseconds}ms");
             _currentVisibleBars = TrainingBarsForPeriod;
 
-            // 本金滚动：新一局从"累计总爆竹"开局（10000 + 历史所有局盈亏之和），
+            // 本金滚动：新一局从"累计总火星币"开局（10000 + 历史所有局盈亏之和），
             // 与首页曲线最后一点严格一致；读取失败则回退 10000
             try
             {
                 _dbService.EnsureTrainingRecordTable();
                 var (_, latestTotal) = _dbService.GetHomeSummary();
 
-                // ★ 破产保护：累计爆竹跌破破产线 → 重置为 10000，并留一条"破产重置"记录（曲线跳回，历史不断裂）
-                if (latestTotal < BankruptcyFirecrackers)
+                // ★ 破产保护（兜底）：正常路径已在结算点重置；这里接住历史遗留的 ≤0 老数据/异常中断场景
+                if (latestTotal <= BankruptcyFirecrackers)
                 {
                     _initialFirecrackers = DefaultInitialFirecrackers;
                     _dbService.SaveTrainingRecord(new TrainingRecordEntry
@@ -599,10 +599,12 @@ namespace BaozhuKLineTrainer
                         InitialFirecrackers = latestTotal,
                         FinalFirecrackers = DefaultInitialFirecrackers,
                         ProfitAmount = DefaultInitialFirecrackers - latestTotal,
-                        ConfigJson = ""
+                        // ★ 训练记录标签：把本局训练类型存进 config_json（该列原为空置，不用改表）
+                        //   首页"训练记录"列表读取此值显示对应标签；老记录为空 → 兜底显示"双盲训练"
+                        ConfigJson = _config.IsLimitUpMode ? "LimitUp" : (_config.TrainTarget ?? "Stock"),
                     });
                     MessageBox.Show(
-                        $"💥 破产！\n\n累计爆竹已跌破 {BankruptcyFirecrackers:F0}（当前 {latestTotal:F2}），本金已重置为 {DefaultInitialFirecrackers:F0}，重新开始！",
+                        $"💥 破产！\n\n火星币已归零或透支（当前 {latestTotal:F2}），本金已重置为 {DefaultInitialFirecrackers:F0}，重新开始！",
                         "破产重置", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
                 else
@@ -612,7 +614,7 @@ namespace BaozhuKLineTrainer
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[DIAG] 读取累计爆竹失败，按 10000 开局: {ex.Message}");
+                Debug.WriteLine($"[DIAG] 读取累计火星币失败，按 10000 开局: {ex.Message}");
             }
 
             _cash = _initialFirecrackers;
@@ -664,8 +666,7 @@ namespace BaozhuKLineTrainer
         /// </summary>
         private void SwitchPeriodKeepAnchor(KLinePeriod oldPeriod)
         {
-            // ★ 涨停训练锁定日线，切周期直接忽略（XAML 里周期按钮已绑 ShowPeriodSwitch 禁用）
-            if (_config.IsLimitUpMode) return;
+            // ★ Bug1：涨停锁定已在 SwitchPeriodCommand 入口（改 SelectedPeriod 之前）拦截，这里不再重复判断
 
             if (string.IsNullOrEmpty(SelectedStock) || _currentDataList == null || _currentDataList.Count == 0)
             {
@@ -1090,7 +1091,23 @@ namespace BaozhuKLineTrainer
             return list;
         }
 
+        private bool _isLoading;   // ★ Bug7 修复：抽局并发保护——上一次还没抽完时再次调用直接忽略
+
         private async Task LoadRandomStock()
+        {
+            if (_isLoading) return;   // 抽局进行中，忽略本次调用
+            _isLoading = true;
+            try
+            {
+                await LoadRandomStockCore();
+            }
+            finally
+            {
+                _isLoading = false;
+            }
+        }
+
+        private async Task LoadRandomStockCore()
         {
             var swTotal = Stopwatch.StartNew();   // ★ 诊断：抽段总耗时
             _startMarkerIndex = -1;
@@ -1099,7 +1116,7 @@ namespace BaozhuKLineTrainer
             // ★ 涨停训练：从涨停票池抽票，锚定"末根可见K线 = 涨停日"的 270 根窗口
             if (_config.IsLimitUpMode)
             {
-                await LoadLimitUpRandomStock();
+                await LoadLimitUpRandomStockCore();
                 return;
             }
 
@@ -1182,6 +1199,20 @@ namespace BaozhuKLineTrainer
         /// 合格锚点 = 前面够 120+20 根（可见 + 指标预热）、后面够 150 根未来、且落在所选训练时间段。
         /// </summary>
         private async Task LoadLimitUpRandomStock()
+        {
+            if (_isLoading) return;   // 抽局进行中，忽略本次调用
+            _isLoading = true;
+            try
+            {
+                await LoadLimitUpRandomStockCore();
+            }
+            finally
+            {
+                _isLoading = false;
+            }
+        }
+
+        private async Task LoadLimitUpRandomStockCore()
         {
             var swTotal = Stopwatch.StartNew();   // ★ 诊断：涨停抽段总耗时
             const int trainBars = 120, futureBars = 150;
@@ -1272,43 +1303,28 @@ namespace BaozhuKLineTrainer
             Debug.WriteLine($"[DIAG] LoadData called, SelectedStock={SelectedStock}");
             if (string.IsNullOrEmpty(SelectedStock)) return;
 
-            string startDateStr = _startDate.ToString("yyyyMMdd");
-            Debug.WriteLine($"[DIAG] Query startDate={startDateStr}");
+            // ★ Bug2 修复：刷新 = 取 20251231 之前最近 TotalBarsForPeriod 根（不再从 _startDate 起查，杜绝假刷新）
+            var allData = _dbService.GetStockData(SelectedStock, endDate: "20251231", limit: 2000);
 
-            _currentDataList = _dbService.GetStockData(
-                SelectedStock,
-                startDate: startDateStr,
-                endDate: "20251231",
-                limit: TotalBarsForPeriod);
-
-            Debug.WriteLine($"[DIAG] Data loaded: {_currentDataList?.Count ?? 0} bars");
-
-            if (_currentDataList == null || _currentDataList.Count < TotalBarsForPeriod)
+            if (allData.Count >= TotalBarsForPeriod)
             {
-                Debug.WriteLine($"[DIAG] Data insufficient, fetching recent {TotalBarsForPeriod} bars before 2026");
-                var allData = _dbService.GetStockData(SelectedStock, endDate: "20251231", limit: 2000);
-
-                if (allData.Count >= TotalBarsForPeriod)
-                {
-                    _currentDataList = allData.Skip(allData.Count - TotalBarsForPeriod).Take(TotalBarsForPeriod).ToList();
-                    _startDate = _currentDataList[0].Date;
-                    OnPropertyChanged(nameof(StartDate));
-                    Debug.WriteLine($"[DIAG] Fetched recent {_currentDataList.Count} bars from {_startDate:yyyy-MM-dd}");
-                }
-                else if (allData.Count > 0)
-                {
-                    _currentDataList = allData;
-                    _startDate = _currentDataList[0].Date;
-                    OnPropertyChanged(nameof(StartDate));
-                    Debug.WriteLine($"[DIAG] Warning: Stock only has {_currentDataList.Count} bars before 2026");
-                }
+                _currentDataList = allData.Skip(allData.Count - TotalBarsForPeriod).Take(TotalBarsForPeriod).ToList();
+                Debug.WriteLine($"[DIAG] Fetched recent {TotalBarsForPeriod} bars before 2026");
             }
-
-            if (_currentDataList == null || _currentDataList.Count == 0)
+            else if (allData.Count > 0)
+            {
+                _currentDataList = allData;
+                Debug.WriteLine($"[DIAG] Warning: Stock only has {_currentDataList.Count} bars before 2026");
+            }
+            else
             {
                 MessageBox.Show("未找到 2026 年之前的数据");
                 return;
             }
+
+            _startDate = _currentDataList[0].Date;
+            OnPropertyChanged(nameof(StartDate));
+            Debug.WriteLine($"[DIAG] Data loaded: {_currentDataList.Count} bars from {_startDate:yyyy-MM-dd}");
 
             _currentTotalBars = _currentDataList.Count;
             OnPropertyChanged(nameof(TotalBarsForPeriod));
@@ -1339,6 +1355,18 @@ namespace BaozhuKLineTrainer
             var mainBars = new List<ScottPlot.Bar>();
             var shadowBars = new List<ScottPlot.Bar>();
 
+            // ★ 一字板最小可视高度：按当前窗口价格波动区间的 0.8% 定，
+            //   保证"一字涨停/跌停"（开=高=低=收）也能画出可见的实体
+            double priceRange = 0;
+            if (visibleCount > 0)
+            {
+                var vis = dataList.Skip(windowStart).Take(visibleCount);
+                priceRange = vis.Max(d => d.High) - vis.Min(d => d.Low);
+            }
+            double minBodyH = visibleCount > 0
+                ? Math.Max(priceRange * 0.008, dataList[windowStart].Close * 0.000001)
+                : 0;
+
             for (int i = windowStart; i < windowEnd; i++)
             {
                 var d = dataList[i];
@@ -1368,7 +1396,13 @@ namespace BaozhuKLineTrainer
 
                 double bodyTop = Math.Max(d.Open, d.Close);
                 double bodyBottom = Math.Min(d.Open, d.Close);
-                if (bodyTop - bodyBottom < 0.0001) bodyTop += 0.0001;
+                if (bodyTop - bodyBottom < minBodyH)
+                {
+                    // 一字板：以实体中心（=涨停价）上下各扩一半最小高度，画出可见方块
+                    double mid = (bodyTop + bodyBottom) / 2;
+                    bodyTop = mid + minBodyH / 2;
+                    bodyBottom = mid - minBodyH / 2;
+                }
 
                 // ===== 上影线 =====
                 if (d.High > bodyTop)
@@ -2170,7 +2204,7 @@ namespace BaozhuKLineTrainer
                 Type = "买入",
                 Date = GetOpTime(),
                 Price = price,
-                Profit = "100.00%"
+                Profit = "--"   // ★ Bug9 修复：买入时无盈亏，"--" 避免 "100.00%" 误导
             });
             UpdatePriceChart();
             RebuildBuyItems();
@@ -2288,7 +2322,7 @@ namespace BaozhuKLineTrainer
             AutoSkipAfterTradeIfNeeded();   // 买卖自动跳
         }
 
-        // ===== 爆仓：总爆竹跌破初始本金的 10% 时强制清仓并结算 =====
+        // ===== 爆仓：总火星币跌破初始本金的 10% 时强制清仓并结算 =====
         private const double LiquidationRatio = 0.10;
 
         private bool CheckLiquidation()
@@ -2327,7 +2361,7 @@ namespace BaozhuKLineTrainer
             NotifyAllStats();
 
             MessageBox.Show(
-                $"💥 爆仓！\n\n总爆竹已跌破初始本金 {_initialFirecrackers:F2} 的 10%，持仓被强制平仓。",
+                $"💥 爆仓！\n\n总火星币已跌破初始本金 {_initialFirecrackers:F2} 的 10%，持仓被强制平仓。",
                 "爆仓", MessageBoxButton.OK, MessageBoxImage.Warning);
 
             ExecuteSettle();   // 走正常结算流程（出结算弹窗）
@@ -2414,6 +2448,9 @@ namespace BaozhuKLineTrainer
 
         private void ExecuteSettle()
         {
+            // ★ Bug8 修复：浏览模式不可结算（命令 CanExecute 之外再兜一层，防快捷键/代码路径直调）
+            if (!_isTrainingMode) return;
+
             if (_hasPosition)
             {
                 double price = GetCurrentPrice();
@@ -2447,6 +2484,9 @@ namespace BaozhuKLineTrainer
             StopTimer();
             StopPlay();
             _isAnswerRevealed = true;
+            // ★ 审查修复②：结算后退出训练模式——"结束训练并结算"按钮 CanExecute 立即失效，
+            //   防止结算弹窗关闭后误点再次执行，往 cy_training_record 重复插一条记录
+            _isTrainingMode = false;
             TrainingStatus = "训练已结算";
             UpdateAllCharts();              // ★ 批量刷新（原三连 UpdateXxx）
             NotifyAllStats();
@@ -2468,8 +2508,8 @@ namespace BaozhuKLineTrainer
                         TrainTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                         StockCode = SelectedStock ?? "",
                         StockName = IsIndexMode
-                                  ? (IndexNames.TryGetValue(SelectedStock ?? "", out var idxName) ? idxName : SelectedStock ?? "")
-                                  : (SelectedStock != null ? _dbService.GetStockName(SelectedStock) : ""),
+               ? (IndexNames.TryGetValue(SelectedStock ?? "", out var idxName) ? idxName : SelectedStock ?? "")
+               : (SelectedStock != null ? _dbService.GetStockName(SelectedStock) : ""),
                         Period = SelectedPeriod.ToString(),
                         StartDate = _currentDataList[sIdx].Date.ToString("yyyy-MM-dd"),
                         EndDate = _currentDataList[eIdx].Date.ToString("yyyy-MM-dd"),
@@ -2486,7 +2526,9 @@ namespace BaozhuKLineTrainer
                         ElapsedSec = (int)_elapsed.TotalSeconds,
                         Leverage = Math.Max(1, _config.Leverage),
                         IsFullGame = _currentVisibleBars >= TotalBarsForPeriod ? 1 : 0,   // 打满整局=1，中途手动结算=0
-                        ConfigJson = ""
+                        // ★ 训练记录标签：把本局训练类型存进 config_json（首页"训练记录"列表读取此值显示对应标签）
+                        //   注意必须先判断 IsLimitUpMode（涨停模式 TrainTarget 被强制写成 "Stock"）
+                        ConfigJson = _config.IsLimitUpMode ? "LimitUp" : (_config.TrainTarget ?? "Stock")
                     });
                 }
                 catch (Exception ex)
@@ -2890,12 +2932,61 @@ namespace BaozhuKLineTrainer
                 ElapsedTime = ElapsedText
             };
 
+            // ★ 2026-09-30 破产即重置（结算点完成，不等下次进训练窗）：
+            //   上面 result 已捕获真实本局盈亏（含破产亏损，结算弹窗显示 -100% 等正确数字）；
+            //   累计火星币 ≤ 0 → 当场写 RESET 记录并回本 10000，
+            //   之后无论"结束"回首页还是"下一局"，读到的都是 10000。
+            //   注意必须在弹窗弹出前完成：弹窗之后"结束"分支会立即刷新首页（读数据库）。
+            if (TotalFirecrackers <= BankruptcyFirecrackers)
+            {
+                try
+                {
+                    _dbService.SaveTrainingRecord(new TrainingRecordEntry
+                    {
+                        TrainTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                        StockCode = "RESET",
+                        StockName = "破产重置",
+                        Period = "Day",
+                        StartDate = "",
+                        EndDate = "",
+                        InitialFirecrackers = TotalFirecrackers,
+                        FinalFirecrackers = DefaultInitialFirecrackers,
+                        ProfitAmount = DefaultInitialFirecrackers - TotalFirecrackers,
+                        ConfigJson = _config.IsLimitUpMode ? "LimitUp" : (_config.TrainTarget ?? "Stock"),
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[DIAG] 破产重置记录写入失败: {ex.Message}");
+                }
+
+                MessageBox.Show(
+                    $"💥 破产！\n\n火星币已归零或透支（当前 {TotalFirecrackers:F2}），本金已重置为 {DefaultInitialFirecrackers:F0}，重新开始！",
+                    "破产重置", MessageBoxButton.OK, MessageBoxImage.Warning);
+
+                _cash = DefaultInitialFirecrackers;   // VM 资金同步回本："下一局"分支立即以 10000 开局
+            }
+
+            // ★ 段位升级判定（2026-09-30）：结算前后本金跨档（如 1万→10万 跨黄金账户）
+            //   注意必须在 ShowDialog 之前取新旧值——弹窗关闭后才会执行 ResultAction（下一局会重置本金）
+            int promoRankIdx = RankService.GetPromotionRankIndex(_initialFirecrackers, TotalFirecrackers);
+
             var dialog = new TrainingResultWindow(result)
             {
                 Owner = Application.Current.MainWindow
             };
 
             dialog.ShowDialog();
+
+            // ★ 升级弹窗：结算弹窗关闭后弹出，避免挡住本局盈亏信息；只报最高到达档（连跳多级不连弹）
+            if (promoRankIdx > 0)
+            {
+                var rankUp = new RankUpWindow(promoRankIdx, TotalFirecrackers)
+                {
+                    Owner = Application.Current.MainWindow
+                };
+                rankUp.ShowDialog();
+            }
 
             switch (dialog.ResultAction)
             {
